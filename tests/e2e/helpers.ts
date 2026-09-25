@@ -21,6 +21,7 @@ export async function createStudentWithChapter(page: Page, s: { name: string; us
   await page.getByText("+ New student").click();
   await page.getByLabel("Name", { exact: true }).fill(s.name);
   await page.getByLabel("Username", { exact: true }).fill(s.username);
+  await page.locator("details form input[name=email]").fill(`${s.username}@wortweg.test`);
   await page.getByLabel("Initial password", { exact: true }).fill(s.password);
   await page.getByRole("button", { name: "Create student" }).click();
   await expect(page.getByText(`Student ${s.username} created.`)).toBeVisible();

@@ -15,10 +15,20 @@ export default defineConfig({
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },
     { name: "mobile", use: { ...devices["Pixel 7"] }, testMatch: /student-mobile/ },
   ],
-  webServer: {
-    command: `npx next start -p ${PORT}`,
-    url: `http://localhost:${PORT}/login`,
-    reuseExistingServer: true,
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      // Local stand-in for Neon Auth (Better Auth + the real @neondatabase/auth SDK on the app side).
+      // Ready once the seeded admin/demo accounts are linked to identities on it.
+      command: "npx tsx tests/support/e2e-auth-server.mts",
+      url: "http://localhost:4109",
+      reuseExistingServer: false,
+      timeout: 60_000,
+    },
+    {
+      command: `npx next start -p ${PORT}`,
+      url: `http://localhost:${PORT}/login`,
+      reuseExistingServer: true,
+      timeout: 120_000,
+    },
+  ],
 });

@@ -5,7 +5,7 @@ import type { Permission } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { hasPermission, isAdmin } from "@/lib/permissions";
 import { safeTimeZone } from "@/lib/time";
-import { auth } from "./index";
+import { getIdentity } from "./neon-server";
 
 export class ForbiddenError extends Error {
   constructor(message = "You do not have permission to do this.") {
@@ -14,13 +14,19 @@ export class ForbiddenError extends Error {
   }
 }
 
-/** Loads the signed-in user fresh from the DB so role/permission/active changes apply immediately. */
+/**
+ * The application user for the current request, or null.
+ *
+ * Neon Auth only establishes *who* is signed in (a stable Neon Auth user id). Everything else —
+ * role, active status, permissions — is loaded fresh from the application database on every
+ * request, so role/permission/deactivation changes apply immediately. An identity with no linked
+ * application user gets nothing.
+ */
 export const getCurrentUser = cache(async () => {
-  const session = await auth();
-  const id = session?.user?.id;
-  if (!id) return null;
+  const identity = await getIdentity();
+  if (!identity) return null;
   const user = await prisma.user.findUnique({
-    where: { id },
+    where: { neonAuthUserId: identity.userId },
     select: { id: true, name: true, username: true, role: true, permissions: true, active: true, lastActiveAt: true, timezone: true },
   });
   if (!user || !user.active) return null;

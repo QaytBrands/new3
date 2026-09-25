@@ -9,6 +9,7 @@ import { buildAccessSet, canAccessLesson } from "@/lib/access";
 import { ActionForm, Checkbox, Field } from "@/components/admin/ActionForm";
 import { UnlockButton } from "@/components/admin/UnlockButton";
 import { TimeZoneSelect } from "@/components/admin/TimeZoneSelect";
+import { LinkBadge, SignInEmailField } from "@/components/admin/SignInEmailField";
 import { deleteStudent, resetStudentProgress, updateStudent } from "@/server/admin/users";
 
 export default async function StudentDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -55,7 +56,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
     <div className="space-y-6">
       <div>
         <Link href="/admin/students" className="text-sm text-slate-500">← Students</Link>
-        <h1 className="text-xl font-bold">{student.name} <span className="text-base font-normal text-slate-500">@{student.username}</span></h1>
+        <h1 className="text-xl font-bold">{student.name} <span className="text-base font-normal text-slate-500">@{student.username}</span><LinkBadge linked={!!student.neonAuthUserId} /></h1>
         <p className="text-sm text-slate-500">Time zone: {student.timezone} · Last active: {student.lastActiveAt ? formatDateTime(student.lastActiveAt, actor.timezone) : "never"}</p>
       </div>
 
@@ -66,7 +67,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
             <input type="hidden" name="id" value={student.id} />
             <div className="grid gap-3 sm:grid-cols-3">
               <Field label="Name"><input className="input" name="name" defaultValue={student.name} required /></Field>
-              <Field label="Email"><input className="input" name="email" type="email" defaultValue={student.email ?? ""} /></Field>
+              <SignInEmailField email={student.email} linked={!!student.neonAuthUserId} />
               <Field label="New password" hint="Leave blank to keep"><input className="input" name="password" type="text" minLength={8} /></Field>
               <Field label="Time zone" hint="Used for the student's “today” and review dates"><TimeZoneSelect defaultValue={student.timezone} /></Field>
             </div>

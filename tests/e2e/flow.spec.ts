@@ -14,6 +14,7 @@ test.describe.serial("admin → student learning flow", () => {
     await page.getByText("+ New student").click();
     await page.getByLabel("Name", { exact: true }).fill(student.name);
     await page.getByLabel("Username", { exact: true }).fill(student.username);
+    await page.locator("details form input[name=email]").fill(`${student.username}@wortweg.test`);
     await page.getByLabel("Initial password", { exact: true }).fill(student.password);
     await page.getByRole("button", { name: "Create student" }).click();
     await expect(page.getByText(`Student ${student.username} created.`)).toBeVisible();
@@ -107,6 +108,7 @@ test.describe.serial("admin → student learning flow", () => {
     const form = page.locator("details form");
     await form.getByLabel("Name", { exact: true }).fill(staff.name);
     await form.getByLabel("Username", { exact: true }).fill(staff.username);
+    await form.locator("input[name=email]").fill(`${staff.username}@wortweg.test`);
     await form.getByLabel("Password", { exact: true }).fill(staff.password);
     await form.getByLabel("View students", { exact: true }).check();
     await form.getByRole("button", { name: "Create staff account" }).click();

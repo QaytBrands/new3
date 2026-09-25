@@ -1,8 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/auth", async () => {
+// The Neon Auth session is represented by the identity it yields; the app maps it to a user itself.
+vi.mock("@/lib/auth/neon-server", async () => {
   const { session } = await import("./setup");
-  return { auth: vi.fn(async () => session.current), signIn: vi.fn(), signOut: vi.fn(), handlers: {} };
+  return { getIdentity: vi.fn(async () => session.current), neonAuth: vi.fn(), clearNeonAuthCookies: vi.fn() };
 });
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
@@ -16,6 +17,7 @@ import { startTest, submitTest } from "@/server/test-actions";
 import { recordPronunciationAttempt, RecordingError } from "@/server/pronunciation-service";
 import { GET as getRecordingAudio } from "@/app/api/recordings/[id]/audio/route";
 import * as users from "@/server/admin/users";
+import { getCurrentUser } from "@/lib/auth/guards";
 import * as curriculum from "@/server/admin/curriculum";
 import * as adminTests from "@/server/admin/tests";
 import { importVocabulary } from "@/server/admin/import";
@@ -63,6 +65,22 @@ beforeAll(async () => {
 afterAll(async () => {
   await cleanup();
   await prisma.$disconnect();
+});
+
+describe("identity → application user mapping", () => {
+  it("maps a Neon Auth identity to its linked user, and nothing else", async () => {
+    signInAs(studentA);
+    expect((await getCurrentUser())?.id).toBe(studentA.id);
+    signInAs({ neonAuthUserId: "na_not_linked_to_any_user", email: studentA.email }); // same email, unknown id
+    expect(await getCurrentUser()).toBeNull();
+    signInAs(null);
+    expect(await getCurrentUser()).toBeNull();
+  });
+
+  it("a valid identity for a deactivated user gets nothing", async () => {
+    signInAs(inactive);
+    expect(await getCurrentUser()).toBeNull();
+  });
 });
 
 describe("student isolation", () => {
@@ -190,10 +208,14 @@ describe("staff permission boundaries", () => {
 
   it("only admins can reset progress and delete students; new students default to Asia/Kolkata", async () => {
     signInAs(admin);
-    expect(await users.createStudent({}, fd({ name: "New", username: `${tag}_new`, password: "longenough1" }))).toMatchObject({ ok: true });
+    expect(
+      await users.createStudent({}, fd({ name: "New", username: `${tag}_new`, email: `${tag}_new@integration.test`, password: "longenough1" })),
+    ).toMatchObject({ ok: true });
     const created = await prisma.user.findUniqueOrThrow({ where: { username: `${tag}_new` } });
     expect(created.timezone).toBe("Asia/Kolkata");
     expect(created.role).toBe("STUDENT");
+    expect(created.neonAuthUserId).toBeTruthy(); // linked to a real (stand-in) Neon Auth identity
+    expect(created.passwordHash).toBeNull(); // passwords live in Neon Auth only
     expect(await users.resetStudentProgress({}, fd({ id: studentB.id, scope: "lessons" }))).toMatchObject({ ok: true });
     expect(await prisma.vocabularyProgress.count({ where: { userId: studentB.id } })).toBe(0);
   });

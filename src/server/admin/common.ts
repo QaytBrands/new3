@@ -3,6 +3,8 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { ForbiddenError } from "@/lib/auth/guards";
+import { ProvisioningError } from "@/lib/auth/provisioning";
+import { NeonAuthConfigError } from "@/lib/auth/neon-config";
 
 export type FormState = { ok?: boolean; error?: string; message?: string; nonce?: number };
 
@@ -17,6 +19,8 @@ export async function run(fn: () => Promise<string | void>): Promise<FormState> 
     }
     if (e instanceof ForbiddenError) return { error: e.message };
     if (e instanceof UserFacingError) return { error: e.message };
+    if (e instanceof ProvisioningError) return { error: e.message };
+    if (e instanceof NeonAuthConfigError) return { error: `Sign-in accounts can't be managed: ${e.message}` };
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
       return { error: "That value is already in use." };
     }
@@ -47,3 +51,8 @@ export const usernameSchema = z
   .regex(/^[a-z0-9._-]{3,40}$/, "Username must be 3–40 characters: letters, numbers, dot, dash or underscore");
 
 export const passwordSchema = z.string().min(8, "Password must be at least 8 characters").max(200);
+
+/** Sign-in email (Neon Auth identifier). Stored lowercase. */
+export const emailSchema = z.email("A valid email is required (it is used to sign in).").transform((e) => e.toLowerCase());
+/** Optional email on edit forms: blank means "unchanged". */
+export const optionalEmailSchema = z.union([z.literal(""), z.email()]).transform((e) => (e ? e.toLowerCase() : null));

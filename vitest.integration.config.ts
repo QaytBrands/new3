@@ -1,8 +1,10 @@
 import { defineConfig } from "vitest/config";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { fileURLToPath } from "url";
+import { INTEGRATION_AUTH_ENV } from "./tests/integration/auth-env";
 
 // DB-backed tests: require DATABASE_URL pointing at a migrated (non-production) database.
+// A local Neon Auth stand-in is started by the global setup.
 export default defineConfig({
   plugins: [tsconfigPaths()],
   resolve: {
@@ -12,9 +14,10 @@ export default defineConfig({
     include: ["tests/integration/**/*.test.ts"],
     environment: "node",
     fileParallelism: false,
-    server: { deps: { inline: ["next-auth", "@auth/core"] } },
     testTimeout: 30_000,
     hookTimeout: 60_000,
-    env: { LOCAL_UPLOAD_DIR: ".data/test-uploads", STORAGE_PROVIDER: "local" },
+    globalSetup: ["./tests/integration/global-setup.mts"],
+    server: { deps: { inline: ["@neondatabase/auth"] } },
+    env: { LOCAL_UPLOAD_DIR: ".data/test-uploads", STORAGE_PROVIDER: "local", ...INTEGRATION_AUTH_ENV },
   },
 });

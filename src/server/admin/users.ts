@@ -1,6 +1,5 @@
 "use server";
 
-import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -8,7 +7,8 @@ import { prisma } from "@/lib/db";
 import { assertAdmin, assertPermission, getCurrentUser, ForbiddenError } from "@/lib/auth/guards";
 import { parsePermissions } from "@/lib/permissions";
 import { DEFAULT_TIMEZONE, isValidTimeZone } from "@/lib/time";
-import { audit, bool, passwordSchema, run, str, usernameSchema, UserFacingError, type FormState } from "./common";
+import { audit, bool, emailSchema, optionalEmailSchema, passwordSchema, run, str, usernameSchema, UserFacingError, type FormState } from "./common";
+import { applyAccountChanges, assertAccountAvailable, createLinkedUser, removeIdentity } from "./accounts";
 
 const nameSchema = z.string().trim().min(1, "Name is required").max(100);
 const timezoneSchema = z
@@ -16,7 +16,6 @@ const timezoneSchema = z
   .trim()
   .transform((v) => v || DEFAULT_TIMEZONE)
   .refine(isValidTimeZone, "Unknown time zone");
-const emailSchema = z.union([z.literal(""), z.email()]).transform((e) => e || null);
 
 async function findStudent(id: string) {
   const s = await prisma.user.findUnique({ where: { id } });
@@ -32,9 +31,12 @@ export async function createStudent(_: FormState, fd: FormData): Promise<FormSta
       name: nameSchema.parse(str(fd, "name")),
       email: emailSchema.parse(str(fd, "email")),
       timezone: timezoneSchema.parse(str(fd, "timezone")),
-      passwordHash: await bcrypt.hash(passwordSchema.parse(str(fd, "password")), 10),
     };
-    const s = await prisma.user.create({ data: { ...data, role: "STUDENT" } });
+    const password = passwordSchema.parse(str(fd, "password"));
+    await assertAccountAvailable(data.username, data.email);
+    const s = await createLinkedUser({ email: data.email, password, name: data.name }, (neonAuthUserId) =>
+      prisma.user.create({ data: { ...data, role: "STUDENT", neonAuthUserId } }),
+    );
     await audit(actor.id, "student.create", s.id, { username: s.username });
     revalidatePath("/admin/students");
     return `Student ${s.username} created.`;
@@ -45,19 +47,15 @@ export async function updateStudent(_: FormState, fd: FormData): Promise<FormSta
   return run(async () => {
     const actor = await assertPermission("EDIT_STUDENTS");
     const s = await findStudent(str(fd, "id"));
-    const password = str(fd, "password");
-    await prisma.user.update({
-      where: { id: s.id },
-      data: {
-        name: nameSchema.parse(str(fd, "name")),
-        email: emailSchema.parse(str(fd, "email")),
-        timezone: timezoneSchema.parse(str(fd, "timezone")),
-        active: bool(fd, "active"),
-        ...(password ? { passwordHash: await bcrypt.hash(passwordSchema.parse(password), 10) } : {}),
-      },
-    });
-    await audit(actor.id, "student.update", s.id, { passwordChanged: !!password });
+    const password = str(fd, "password") ? passwordSchema.parse(str(fd, "password")) : null;
+    const name = nameSchema.parse(str(fd, "name"));
+    const timezone = timezoneSchema.parse(str(fd, "timezone"));
+    const account = await applyAccountChanges(s, { email: optionalEmailSchema.parse(str(fd, "email")), password, active: bool(fd, "active") });
+    await prisma.user.update({ where: { id: s.id }, data: { ...account.data, name, timezone } });
+    const warning = await account.afterSave();
+    await audit(actor.id, "student.update", s.id, { passwordChanged: !!password, linked: !!(account.data.neonAuthUserId ?? s.neonAuthUserId) });
     revalidatePath(`/admin/students/${s.id}`);
+    return warning ?? undefined;
   });
 }
 
@@ -66,6 +64,7 @@ export async function deleteStudent(_: FormState, fd: FormData): Promise<FormSta
     const actor = await assertAdmin();
     const s = await findStudent(str(fd, "id"));
     await prisma.user.delete({ where: { id: s.id } });
+    await removeIdentity(s.neonAuthUserId);
     await audit(actor.id, "student.delete", s.id, { username: s.username });
   });
   if (res.ok) redirect("/admin/students");
@@ -124,17 +123,19 @@ export async function setUnlock(_: FormState, fd: FormData): Promise<FormState> 
 export async function createStaff(_: FormState, fd: FormData): Promise<FormState> {
   return run(async () => {
     const actor = await assertAdmin();
-    const u = await prisma.user.create({
-      data: {
-        role: "STAFF",
-        username: usernameSchema.parse(str(fd, "username")),
-        name: nameSchema.parse(str(fd, "name")),
-        email: emailSchema.parse(str(fd, "email")),
-        timezone: timezoneSchema.parse(str(fd, "timezone")),
-        passwordHash: await bcrypt.hash(passwordSchema.parse(str(fd, "password")), 10),
-        permissions: parsePermissions(fd.getAll("permissions")),
-      },
-    });
+    const data = {
+      role: "STAFF" as const,
+      username: usernameSchema.parse(str(fd, "username")),
+      name: nameSchema.parse(str(fd, "name")),
+      email: emailSchema.parse(str(fd, "email")),
+      timezone: timezoneSchema.parse(str(fd, "timezone")),
+      permissions: parsePermissions(fd.getAll("permissions")),
+    };
+    const password = passwordSchema.parse(str(fd, "password"));
+    await assertAccountAvailable(data.username, data.email);
+    const u = await createLinkedUser({ email: data.email, password, name: data.name }, (neonAuthUserId) =>
+      prisma.user.create({ data: { ...data, neonAuthUserId } }),
+    );
     await audit(actor.id, "staff.create", u.id, { permissions: u.permissions });
     revalidatePath("/admin/staff");
     return `Staff account ${u.username} created.`;
@@ -147,21 +148,16 @@ export async function updateStaff(_: FormState, fd: FormData): Promise<FormState
     const id = str(fd, "id");
     const u = await prisma.user.findUnique({ where: { id } });
     if (!u || u.role !== "STAFF") throw new UserFacingError("Staff member not found.");
-    const password = str(fd, "password");
+    const password = str(fd, "password") ? passwordSchema.parse(str(fd, "password")) : null;
     const permissions = parsePermissions(fd.getAll("permissions"));
-    await prisma.user.update({
-      where: { id },
-      data: {
-        name: nameSchema.parse(str(fd, "name")),
-        email: emailSchema.parse(str(fd, "email")),
-        timezone: timezoneSchema.parse(str(fd, "timezone")),
-        active: bool(fd, "active"),
-        permissions,
-        ...(password ? { passwordHash: await bcrypt.hash(passwordSchema.parse(password), 10) } : {}),
-      },
-    });
+    const name = nameSchema.parse(str(fd, "name"));
+    const timezone = timezoneSchema.parse(str(fd, "timezone"));
+    const account = await applyAccountChanges(u, { email: optionalEmailSchema.parse(str(fd, "email")), password, active: bool(fd, "active") });
+    await prisma.user.update({ where: { id }, data: { ...account.data, name, timezone, permissions } });
+    const warning = await account.afterSave();
     await audit(actor.id, "staff.update", id, { permissions, passwordChanged: !!password });
     revalidatePath("/admin/staff");
+    return warning ?? undefined;
   });
 }
 

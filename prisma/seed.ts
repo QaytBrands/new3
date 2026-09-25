@@ -1,5 +1,6 @@
 import { PrismaClient, type Article } from "@prisma/client";
-import bcrypt from "bcryptjs";
+import { createIdentityAdmin } from "../src/lib/auth/provisioning";
+import { ensureLinkedUser, isProductionEnvironment } from "./seed-identities";
 
 const prisma = new PrismaClient();
 
@@ -91,13 +92,16 @@ async function main() {
   await prisma.appSettings.upsert({ where: { id: 1 }, create: { id: 1 }, update: {} });
 
   const username = (process.env.SEED_ADMIN_USERNAME ?? "admin").toLowerCase();
+  const email = process.env.SEED_ADMIN_EMAIL;
   const password = process.env.SEED_ADMIN_PASSWORD;
+  const demoPassword = process.env.SEED_DEMO_STUDENT_PASSWORD;
+  if (!email) throw new Error("Set SEED_ADMIN_EMAIL (the admin's Neon Auth sign-in email).");
   if (!password || password.length < 8) throw new Error("Set SEED_ADMIN_PASSWORD (min 8 chars) to seed the admin account.");
-  await prisma.user.upsert({
-    where: { username },
-    create: { username, name: "Administrator", role: "ADMIN", passwordHash: await bcrypt.hash(password, 10) },
-    update: {},
-  });
+  if (demoPassword && isProductionEnvironment()) {
+    throw new Error("SEED_DEMO_STUDENT_PASSWORD is set in a production environment. The demo account is for development only; unset it.");
+  }
+  const identities = createIdentityAdmin();
+  await ensureLinkedUser(prisma, identities, { username, name: "Administrator", role: "ADMIN", email, password });
 
   const existing = await prisma.level.findUnique({ where: { code: "A1" } });
   if (existing) {
@@ -144,13 +148,14 @@ async function main() {
     }
   }
 
-  const demoPassword = process.env.SEED_DEMO_STUDENT_PASSWORD;
   if (demoPassword) {
     const a1 = await prisma.level.findUniqueOrThrow({ where: { code: "A1" }, include: { chapters: { orderBy: { order: "asc" }, take: 1 } } });
-    const student = await prisma.user.upsert({
-      where: { username: "demo" },
-      create: { username: "demo", name: "Demo Student", role: "STUDENT", passwordHash: await bcrypt.hash(demoPassword, 10) },
-      update: {},
+    const student = await ensureLinkedUser(prisma, identities, {
+      username: "demo",
+      name: "Demo Student",
+      role: "STUDENT",
+      email: process.env.SEED_DEMO_STUDENT_EMAIL ?? "demo.student@example.com",
+      password: demoPassword,
     });
     if (a1.chapters[0]) {
       await prisma.unlock.upsert({

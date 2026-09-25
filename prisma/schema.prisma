@@ -71,10 +71,15 @@ enum LessonStatus {
 model User {
   id           String       @id @default(cuid())
   role         Role
+  /// Sign-in handle shown in the UI. Resolved to `email` at login.
   username     String       @unique
   name         String
-  email        String?
-  passwordHash String
+  /// Neon Auth sign-in email (stored lowercase). Required for any account that can sign in.
+  email        String?      @unique
+  /// Stable Neon Auth user id. The only key used to map an authenticated session to this record.
+  neonAuthUserId String?    @unique @map("neon_auth_user_id")
+  /// Deprecated: Auth.js bcrypt hash. Neon Auth owns passwords; kept only so no data is dropped.
+  passwordHash String?
   active       Boolean      @default(true)
   permissions  Permission[] @default([])
   /// IANA time zone (e.g. "Asia/Kolkata"). Defines this user's "today" for daily metrics and review dates.

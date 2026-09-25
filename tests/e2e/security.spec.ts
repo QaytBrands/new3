@@ -25,6 +25,7 @@ test.describe.serial("direct URL / API access is enforced server-side", () => {
     const form = page.locator("details form");
     await form.getByLabel("Name", { exact: true }).fill(viewer.name);
     await form.getByLabel("Username", { exact: true }).fill(viewer.username);
+    await form.locator("input[name=email]").fill(`${viewer.username}@wortweg.test`);
     await form.getByLabel("Password", { exact: true }).fill(viewer.password);
     await form.getByLabel("View students", { exact: true }).check();
     await form.getByRole("button", { name: "Create staff account" }).click();

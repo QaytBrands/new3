@@ -6,6 +6,7 @@ import { hasPermission } from "@/lib/permissions";
 import { ActionForm, Field } from "@/components/admin/ActionForm";
 import { createStudent } from "@/server/admin/users";
 import { TimeZoneSelect } from "@/components/admin/TimeZoneSelect";
+import { LinkBadge } from "@/components/admin/SignInEmailField";
 
 export const metadata = { title: "Students" };
 
@@ -39,7 +40,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
             <div className="grid gap-3 sm:grid-cols-4">
               <Field label="Name"><input className="input" name="name" required /></Field>
               <Field label="Username"><input className="input" name="username" required autoCapitalize="none" /></Field>
-              <Field label="Email (optional)"><input className="input" name="email" type="email" /></Field>
+              <Field label="Email" hint="Used to sign in with Neon Auth"><input className="input" name="email" type="email" required /></Field>
               <Field label="Initial password"><input className="input" name="password" type="text" required minLength={8} /></Field>
               <Field label="Time zone" hint="Defines the student's “today”"><TimeZoneSelect /></Field>
             </div>
@@ -55,7 +56,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
           <tbody>
             {students.map((s) => (
               <tr key={s.id}>
-                <td><Link className="font-medium text-brand-700" href={`/admin/students/${s.id}`}>{s.name}</Link></td>
+                <td><Link className="font-medium text-brand-700" href={`/admin/students/${s.id}`}>{s.name}</Link><LinkBadge linked={!!s.neonAuthUserId} /></td>
                 <td className="text-slate-500">{s.username}</td>
                 <td>{s.active ? "Active" : <span className="text-rose-600">Disabled</span>}</td>
                 <td>{s._count.lessonProgress}</td>

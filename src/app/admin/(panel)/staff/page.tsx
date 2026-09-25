@@ -4,6 +4,7 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { ActionForm, Checkbox, Field } from "@/components/admin/ActionForm";
 import { createStaff, updateStaff } from "@/server/admin/users";
 import { TimeZoneSelect } from "@/components/admin/TimeZoneSelect";
+import { LinkBadge, SignInEmailField } from "@/components/admin/SignInEmailField";
 
 export const metadata = { title: "Staff" };
 
@@ -32,7 +33,7 @@ export default async function StaffPage() {
           <div className="grid gap-3 sm:grid-cols-5">
             <Field label="Name"><input className="input" name="name" required /></Field>
             <Field label="Username"><input className="input" name="username" required autoCapitalize="none" /></Field>
-            <Field label="Email"><input className="input" name="email" type="email" /></Field>
+            <Field label="Email" hint="Used to sign in with Neon Auth"><input className="input" name="email" type="email" required /></Field>
             <Field label="Password"><input className="input" name="password" type="text" required minLength={8} /></Field>
             <Field label="Time zone"><TimeZoneSelect /></Field>
           </div>
@@ -42,12 +43,12 @@ export default async function StaffPage() {
 
       {staff.map((s) => (
         <section key={s.id} className="card p-4">
-          <h2 className="mb-3 font-semibold">{s.name} <span className="font-normal text-slate-500">@{s.username}</span>{!s.active && <span className="ml-2 text-sm text-rose-600">disabled</span>}</h2>
+          <h2 className="mb-3 font-semibold">{s.name} <span className="font-normal text-slate-500">@{s.username}</span>{!s.active && <span className="ml-2 text-sm text-rose-600">disabled</span>}<LinkBadge linked={!!s.neonAuthUserId} /></h2>
           <ActionForm action={updateStaff}>
             <input type="hidden" name="id" value={s.id} />
             <div className="grid gap-3 sm:grid-cols-3">
               <Field label="Name"><input className="input" name="name" defaultValue={s.name} required /></Field>
-              <Field label="Email"><input className="input" name="email" type="email" defaultValue={s.email ?? ""} /></Field>
+              <SignInEmailField email={s.email} linked={!!s.neonAuthUserId} />
               <Field label="New password" hint="Leave blank to keep"><input className="input" name="password" type="text" minLength={8} /></Field>
               <Field label="Time zone"><TimeZoneSelect defaultValue={s.timezone} /></Field>
             </div>
