@@ -7,7 +7,7 @@ const password = process.env.SEED_DEMO_STUDENT_PASSWORD;
 test("student screens render at phone width", async ({ page }) => {
   test.skip(!password, "SEED_DEMO_STUDENT_PASSWORD not set");
   await login(page, "/login", "demo", password!);
-  await expect(page.getByText(/Hallo, Demo/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Hallo, Demo/ })).toBeVisible();
   await page.screenshot({ path: "test-results/screens/dashboard.png", fullPage: true });
 
   await page.goto("/levels");

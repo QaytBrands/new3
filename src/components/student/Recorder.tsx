@@ -58,6 +58,8 @@ export function Recorder({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    // Browser feature detection must run after hydration (the server can't know the answer).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSupportsStt(!!createRecognition());
     return () => {
       if (timer.current) clearTimeout(timer.current);

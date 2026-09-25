@@ -54,6 +54,8 @@ export function TestRunner({
   useEffect(() => {
     try {
       const saved = localStorage.getItem(storageKey);
+      // Restoring browser-only state after hydration; a lazy initializer would mismatch the server render.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (saved) setAnswers(JSON.parse(saved));
     } catch {}
   }, [storageKey]);
@@ -65,7 +67,7 @@ export function TestRunner({
   }, [answers, storageKey]);
 
   const deadline = useMemo(() => (timeLimitSec ? new Date(startedAt).getTime() + timeLimitSec * 1000 : null), [startedAt, timeLimitSec]);
-  const [remaining, setRemaining] = useState<number | null>(deadline ? Math.max(0, deadline - Date.now()) : null);
+  const [remaining, setRemaining] = useState<number | null>(() => (deadline ? Math.max(0, deadline - Date.now()) : null));
 
   const submit = useCallback(() => {
     if (submitted.current) return;
