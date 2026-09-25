@@ -74,3 +74,11 @@ export async function assertStudent() {
   if (!user || user.role !== "STUDENT") throw new ForbiddenError();
   return user;
 }
+
+/** Curriculum pages are visible to anyone who can manage some part of the curriculum. */
+export async function requireCurriculumViewer() {
+  const user = await requireStaff();
+  const { canViewCurriculum } = await import("@/lib/admin-nav");
+  if (!canViewCurriculum(user)) redirect("/admin/forbidden");
+  return user;
+}

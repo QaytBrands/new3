@@ -169,7 +169,7 @@ export function Recorder({
       {state === "recording" && <p className="text-sm text-rose-600">Recording… say “{expected}”</p>}
       {error && <p className="text-sm text-rose-600">{error}</p>}
       {!supportsStt && state === "idle" && (
-        <p className="text-center text-xs text-slate-400">Speech recognition isn't available in this browser; your recording will be saved without a transcript.</p>
+        <p className="text-center text-xs text-slate-400">Speech recognition isn&apos;t available in this browser; your recording will be saved without a transcript.</p>
       )}
       {result && (
         <div className="w-full rounded-xl bg-slate-50 p-3 text-sm">

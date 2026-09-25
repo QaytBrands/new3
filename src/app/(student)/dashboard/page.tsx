@@ -67,7 +67,7 @@ export default async function Dashboard() {
         </div>
       </section>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <div className="card p-4">
           <p className="label">Current chapter</p>
           <p className="font-semibold">{currentChapter?.title ?? "—"}</p>

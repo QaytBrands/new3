@@ -23,6 +23,12 @@ async function verify(credentials: Partial<Record<string, unknown>>, roles: Role
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  logger: {
+    // A wrong password is expected, not a server error.
+    error(error) {
+      if ((error as { type?: string }).type !== "CredentialsSignin") console.error(error);
+    },
+  },
   providers: [
     Credentials({
       id: "student",
