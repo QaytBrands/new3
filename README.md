@@ -115,8 +115,10 @@ Auth.js bcrypt hashes can't be imported into Neon Auth, so existing passwords do
 
 Do these in order. Nothing is deployed automatically.
 
+> **Keep production values out of the repository and out of auto-loaded files.** For commands you run from your machine (migrations, seed), put them in a git-ignored `.env.neon` and load it explicitly: `set -a; . ./.env.neon; set +a`. Don't use `.env.production.local`: `next build` / `next start` load it automatically, so the local test suite would run against the production database. `.gitignore` ignores every `.env*` file except `.env.example`.
+
 **1. Neon Postgres**
-1. In your Neon project, pick the production branch. Under **Connect**, copy the **pooled** connection string (host contains `-pooler`) for `DATABASE_URL` and the **direct** one for `DIRECT_URL`. Both need `sslmode=require`.
+1. In your Neon project, pick the production branch. Under **Connect**, copy the **pooled** connection string (host contains `-pooler`) for `DATABASE_URL`. For `DIRECT_URL`, use the same string with `-pooler` removed from the host. Keep `sslmode=require` (and `channel_binding=require` if Neon includes it; Prisma accepts it).
 2. Optionally create a `preview` branch for Vercel Preview deployments.
 
 **2. Neon Auth**
