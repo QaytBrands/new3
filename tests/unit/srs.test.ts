@@ -14,6 +14,15 @@ describe("srs", () => {
     expect(r3.mastery).toBeGreaterThan(r1.mastery);
   });
 
+  it("schedules correct answers for local midnight in the student's time zone", () => {
+    // 2026-03-01 20:00 UTC is already 2 March 01:30 in Kolkata.
+    const now = new Date("2026-03-01T20:00:00Z");
+    const kolkata = applyReview(fresh, true, now, "Asia/Kolkata");
+    expect(kolkata.nextReviewAt.toISOString()).toBe("2026-03-02T18:30:00.000Z"); // 3 March 00:00 IST
+    const utc = applyReview(fresh, true, now, "UTC");
+    expect(utc.nextReviewAt.toISOString()).toBe("2026-03-02T00:00:00.000Z");
+  });
+
   it("resets on an incorrect answer and schedules immediate review", () => {
     const now = new Date("2026-01-01T00:00:00Z");
     const r = applyReview(applyReview(fresh, true, now), false, now);

@@ -8,13 +8,15 @@ export type QuizVocab = {
   plural?: string | null;
   ipa?: string | null;
   phonetic?: string | null;
-  audioUrl?: string | null;
+  nativeAudioUrl?: string | null;
   sentences: { german: string; english: string }[];
 };
 
 export type PromptData = {
   sentence?: string;
   audioText?: string;
+  nativeAudioUrl?: string | null;
+  /** @deprecated key used by attempts created before native audio was introduced */
   audioUrl?: string | null;
   ipa?: string | null;
   phonetic?: string | null;

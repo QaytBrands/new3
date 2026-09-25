@@ -134,7 +134,7 @@ export async function importVocabulary(_: ImportState, fd: FormData): Promise<Im
           data: {
             lessonId, order,
             german: row.german, english: row.english, article: row.article, plural: row.plural, partOfSpeech: row.partOfSpeech,
-            ipa: row.ipa, phonetic: row.phonetic, audioUrl: row.audioUrl, difficulty: row.difficulty, tags: row.tags,
+            ipa: row.ipa, phonetic: row.phonetic, nativeAudioUrl: row.nativeAudioUrl, difficulty: row.difficulty, tags: row.tags,
             sentences: examples.length ? { create: examples.map((e, i) => ({ german: e.german, english: e.english || "—", order: i })) } : undefined,
           },
         });

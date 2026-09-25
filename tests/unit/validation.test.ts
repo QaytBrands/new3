@@ -17,6 +17,18 @@ describe("csv import validation", () => {
     expect(res.errors[0].messages.length).toBeGreaterThanOrEqual(3);
   });
 
+  it("accepts only https or site-relative native audio URLs, and the legacy audio_url header", () => {
+    const base = { level: "A1", chapter: "c", day: "1", german: "Hund", english: "dog" };
+    const res = validateCsvRecords([
+      { ...base, native_audio_url: "https://cdn.example.com/hund.mp3" },
+      { ...base, audio_url: "/audio/hund.mp3" },
+      { ...base, native_audio_url: "javascript:alert(1)" },
+      { ...base, native_audio_url: "http://insecure.example.com/a.mp3" },
+    ]);
+    expect(res.valid.map((v) => v.row.nativeAudioUrl)).toEqual(["https://cdn.example.com/hund.mp3", "/audio/hund.mp3"]);
+    expect(res.errors.map((e) => e.line)).toEqual([4, 5]);
+  });
+
   it("uppercases articles", () => {
     const res = validateCsvRecords([{ level: "A1", chapter: "c", day: "2", german: "Hund", english: "dog", article: "Der" }]);
     expect(res.valid[0].row.article).toBe("DER");
@@ -33,7 +45,7 @@ describe("csv import validation", () => {
 describe("pronunciation engine", () => {
   it("never fabricates a score", async () => {
     const r = await new BrowserTranscriptEngine().analyze({ expectedText: "Hund", locale: "de-DE", clientTranscript: "Hund" });
-    expect(r.score).toBeNull();
+    expect(r.overallScore).toBeNull();
     expect(r.transcriptMatches).toBe(true);
   });
 

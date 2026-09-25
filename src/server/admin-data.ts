@@ -2,28 +2,29 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { buildAccessSet, canAccessLesson } from "@/lib/access";
 
+import { lastZonedDayKeys, startOfZonedDay, zonedDayKey, zonedDayRange } from "@/lib/time";
+
 const DAY = 86_400_000;
 
-export function startOfToday() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-export async function getAdminStats() {
-  const now = Date.now();
+/**
+ * Dashboard metrics. "Today" and the 7-day activity chart use the viewing admin's time zone
+ * (each staff member sees their own local day); rolling windows (7/14/30 days) are time-zone independent.
+ */
+export async function getAdminStats(timeZone: string, nowDate = new Date()) {
+  const now = nowDate.getTime();
   const weekAgo = new Date(now - 7 * DAY);
   const twoWeeksAgo = new Date(now - 14 * DAY);
-  const today = startOfToday();
+  const { start: today, end: tomorrow } = zonedDayRange(nowDate, timeZone);
+  const chartStart = startOfZonedDay(nowDate, timeZone, -6);
 
   const [students, lessonsToday, testsTotal, testsToday, avgScore, pronunciation, lessons, unlocks, seenCounts, recentAttempts, masteryAgg] =
     await Promise.all([
       prisma.user.findMany({ where: { role: "STUDENT" }, select: { id: true, name: true, username: true, active: true, lastActiveAt: true, createdAt: true } }),
-      prisma.lessonProgress.count({ where: { completedAt: { gte: today } } }),
+      prisma.lessonProgress.count({ where: { completedAt: { gte: today, lt: tomorrow } } }),
       prisma.testAttempt.count({ where: { completedAt: { not: null } } }),
-      prisma.testAttempt.count({ where: { completedAt: { gte: today } } }),
+      prisma.testAttempt.count({ where: { completedAt: { gte: today, lt: tomorrow } } }),
       prisma.testAttempt.aggregate({ where: { completedAt: { gte: new Date(now - 30 * DAY) } }, _avg: { percentage: true } }),
-      prisma.pronunciationAttempt.findMany({ where: { createdAt: { gte: weekAgo } }, select: { createdAt: true, userId: true } }),
+      prisma.pronunciationAttempt.findMany({ where: { createdAt: { gte: chartStart, lt: tomorrow } }, select: { createdAt: true, userId: true } }),
       prisma.lesson.findMany({ select: { id: true, chapterId: true, chapter: { select: { levelId: true } }, _count: { select: { vocabulary: true } } } }),
       prisma.unlock.findMany({ select: { userId: true, scope: true, levelId: true, chapterId: true, lessonId: true } }),
       prisma.vocabularyProgress.groupBy({ by: ["userId"], where: { timesSeen: { gt: 0 } }, _count: { _all: true } }),
@@ -66,10 +67,9 @@ export async function getAdminStats() {
     .filter((s) => s.reasons.length > 0)
     .slice(0, 15);
 
-  const byDay = new Map<string, number>();
-  for (let i = 6; i >= 0; i--) byDay.set(new Date(now - i * DAY).toISOString().slice(0, 10), 0);
+  const byDay = new Map<string, number>(lastZonedDayKeys(nowDate, timeZone, 7).map((k) => [k, 0]));
   for (const p of pronunciation) {
-    const k = p.createdAt.toISOString().slice(0, 10);
+    const k = zonedDayKey(p.createdAt, timeZone);
     if (byDay.has(k)) byDay.set(k, byDay.get(k)! + 1);
   }
 

@@ -7,6 +7,7 @@ import { finalizeAttempt, startAttempt, TestAccessError } from "./test-service";
 
 export async function startTest(testId: string) {
   const user = await assertStudent();
+  if (typeof testId !== "string") return { error: "Test not available." };
   let attemptId: string;
   try {
     attemptId = await startAttempt(user.id, testId);
@@ -19,8 +20,9 @@ export async function startTest(testId: string) {
 
 export async function submitTest(attemptId: string, answers: Record<number, string>) {
   const user = await assertStudent();
+  if (typeof attemptId !== "string") throw new TestAccessError("Attempt not found.");
   const clean: Record<number, string> = {};
-  for (const [k, v] of Object.entries(answers ?? {})) {
+  for (const [k, v] of Object.entries(typeof answers === "object" && answers ? answers : {})) {
     const pos = Number(k);
     if (Number.isInteger(pos) && pos >= 0 && typeof v === "string") clean[pos] = v;
   }

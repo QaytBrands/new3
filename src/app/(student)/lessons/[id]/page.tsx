@@ -31,8 +31,8 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
           dailyTestId={lesson.tests[0]?.id ?? null}
           words={lesson.vocabulary.map((v) => ({
             id: v.id, german: v.german, english: v.english, article: v.article, plural: v.plural, partOfSpeech: v.partOfSpeech,
-            ipa: v.ipa, phonetic: v.phonetic, audioUrl: v.audioUrl, difficult: difficult.has(v.id),
-            sentences: v.sentences.map((s) => ({ id: s.id, german: s.german, english: s.english, audioUrl: s.audioUrl })),
+            ipa: v.ipa, phonetic: v.phonetic, nativeAudioUrl: v.nativeAudioUrl, difficult: difficult.has(v.id),
+            sentences: v.sentences.map((s) => ({ id: s.id, german: s.german, english: s.english, nativeAudioUrl: s.nativeAudioUrl })),
           }))}
         />
       )}

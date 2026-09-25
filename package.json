@@ -14,7 +14,9 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "vercel-build": "prisma generate && prisma migrate deploy && next build",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test:integration": "vitest run -c vitest.integration.config.ts",
+    "test:all": "npm test && npm run test:integration && npm run test:e2e"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

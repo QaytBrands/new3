@@ -52,7 +52,7 @@ export default async function WordsPage({ searchParams }: { searchParams: Promis
         <ul className="card divide-y divide-slate-100">
           {rows.map(({ v, p }) => (
             <li key={v.id} className="flex items-center gap-3 p-3">
-              <AudioButton text={v.article ? `${v.article.toLowerCase()} ${v.german}` : v.german} audioUrl={v.audioUrl} size="sm" />
+              <AudioButton text={v.article ? `${v.article.toLowerCase()} ${v.german}` : v.german} nativeAudioUrl={v.nativeAudioUrl} size="sm" />
               <div className="min-w-0 flex-1">
                 <p className="font-semibold"><GermanWord german={v.german} article={v.article} />{p?.difficult && <span className="ml-1 text-amber-500">★</span>}</p>
                 <p className="truncate text-sm text-slate-500">{v.english} · {v.lesson.chapter.title}, Day {v.lesson.dayNumber}</p>

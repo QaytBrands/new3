@@ -1,3 +1,5 @@
+import { formatDate, formatDateTime } from "@/lib/time";
+import { recordingAudioPath } from "@/server/pronunciation-service";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
@@ -6,6 +8,7 @@ import { hasPermission, isAdmin } from "@/lib/permissions";
 import { buildAccessSet, canAccessLesson } from "@/lib/access";
 import { ActionForm, Checkbox, Field } from "@/components/admin/ActionForm";
 import { UnlockButton } from "@/components/admin/UnlockButton";
+import { TimeZoneSelect } from "@/components/admin/TimeZoneSelect";
 import { deleteStudent, resetStudentProgress, updateStudent } from "@/server/admin/users";
 
 export default async function StudentDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -53,7 +56,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
       <div>
         <Link href="/admin/students" className="text-sm text-slate-500">← Students</Link>
         <h1 className="text-xl font-bold">{student.name} <span className="text-base font-normal text-slate-500">@{student.username}</span></h1>
-        <p className="text-sm text-slate-500">Last active: {student.lastActiveAt?.toLocaleString() ?? "never"}</p>
+        <p className="text-sm text-slate-500">Time zone: {student.timezone} · Last active: {student.lastActiveAt ? formatDateTime(student.lastActiveAt, actor.timezone) : "never"}</p>
       </div>
 
       {can.edit && (
@@ -65,6 +68,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
               <Field label="Name"><input className="input" name="name" defaultValue={student.name} required /></Field>
               <Field label="Email"><input className="input" name="email" type="email" defaultValue={student.email ?? ""} /></Field>
               <Field label="New password" hint="Leave blank to keep"><input className="input" name="password" type="text" minLength={8} /></Field>
+              <Field label="Time zone" hint="Used for the student's “today” and review dates"><TimeZoneSelect defaultValue={student.timezone} /></Field>
             </div>
             <Checkbox name="active" label="Account active" defaultChecked={student.active} />
           </ActionForm>
@@ -137,7 +141,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
                       <td>{w.vocabulary.german} <span className="text-slate-400">({w.vocabulary.english})</span>{w.difficult && " ★"}</td>
                       <td>{w.timesSeen}</td><td>{w.timesCorrect}</td><td>{w.timesIncorrect}</td>
                       <td>{Math.round(w.mastery * 100)}%</td>
-                      <td>{w.nextReviewAt?.toLocaleDateString() ?? "—"}</td>
+                      <td>{formatDate(w.nextReviewAt, student.timezone)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -161,7 +165,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
                     <td>{a.correctCount}/{a.total} ({a.percentage}%)</td>
                     <td>{a.passed ? <span className="text-emerald-600">Passed</span> : <span className="text-rose-600">Failed</span>}</td>
                     <td>{a.durationSec != null ? `${Math.floor(a.durationSec / 60)}m ${a.durationSec % 60}s` : "—"}</td>
-                    <td>{a.completedAt?.toLocaleString()}</td>
+                    <td>{formatDateTime(a.completedAt, actor.timezone)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -179,8 +183,8 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
                 <li key={p.id} className="flex flex-wrap items-center gap-3 py-2">
                   <span className="w-32 font-medium">{p.vocabulary.german}</span>
                   <span className="text-slate-500">{p.transcript ? `heard “${p.transcript}” ${p.transcriptMatches ? "✓" : "✗"}` : "no transcript"}</span>
-                  {p.audioUrl && <audio controls preload="none" src={p.audioUrl} className="h-8" />}
-                  <span className="ml-auto text-xs text-slate-400">{p.createdAt.toLocaleString()}</span>
+                  {p.audioKey && <audio controls preload="none" src={recordingAudioPath(p.id)} className="h-8" />}
+                  <span className="ml-auto text-xs text-slate-400">{formatDateTime(p.createdAt, actor.timezone)}</span>
                 </li>
               ))}
             </ul>

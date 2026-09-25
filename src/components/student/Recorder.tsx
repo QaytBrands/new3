@@ -3,14 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 
-type EngineResult = {
-  provider: string;
-  capabilities: { transcription: boolean; scoring: boolean; phonemeFeedback: boolean };
-  transcription: string | null;
-  transcriptMatches: boolean | null;
-  score: number | null;
-  errors: string[];
-};
+import type { PronunciationResult as EngineResult } from "@/lib/pronunciation/types";
 
 type SpeechRecognitionLike = {
   lang: string;
@@ -185,10 +178,15 @@ export function Recorder({
           ) : (
             <p className="text-slate-500">Recording saved. No transcript was available.</p>
           )}
-          {result.score !== null ? (
-            <p className="mt-1">Pronunciation score: <strong>{Math.round(result.score)}</strong>/100</p>
+          {result.capabilities.scoring && result.overallScore !== null ? (
+            <p className="mt-1">Pronunciation score: <strong>{Math.round(result.overallScore)}</strong>/100</p>
           ) : (
             <p className="mt-1 text-xs text-slate-400">Pronunciation scoring isn’t available yet — compare your recording with the reference audio.</p>
+          )}
+          {result.issues.length > 0 && (
+            <ul className="mt-1 list-disc pl-5 text-xs text-slate-600">
+              {result.issues.map((i, n) => <li key={n}>{i.message}</li>)}
+            </ul>
           )}
         </div>
       )}

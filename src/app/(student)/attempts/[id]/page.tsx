@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/lib/time";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import clsx from "clsx";
@@ -45,7 +46,7 @@ export default async function AttemptPage({ params }: { params: Promise<{ id: st
   const answers = await prisma.testAnswer.findMany({
     where: { attemptId: id },
     orderBy: { position: "asc" },
-    include: { pronunciationAttempt: { select: { audioUrl: true, transcript: true, transcriptMatches: true } } },
+    include: { pronunciationAttempt: { select: { transcript: true, transcriptMatches: true } } },
   });
   const wrong = answers.filter((a) => a.isCorrect === false);
 
@@ -62,7 +63,7 @@ export default async function AttemptPage({ params }: { params: Promise<{ id: st
           <div className="rounded-lg bg-rose-50 p-2"><b>{attempt.incorrectCount}</b> incorrect</div>
           <div className="rounded-lg bg-slate-50 p-2">{formatDuration(attempt.durationSec)}</div>
         </div>
-        <p className="mt-3 text-xs text-slate-400">Attempt {attempt.attemptNumber} · {attempt.completedAt.toLocaleString()}</p>
+        <p className="mt-3 text-xs text-slate-400">Attempt {attempt.attemptNumber} · {formatDateTime(attempt.completedAt, user.timezone)}</p>
         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
           <Link href={`/tests/${attempt.testId}`} className="btn-secondary">Try again</Link>
           <Link href="/dashboard" className="btn-primary">Continue learning</Link>

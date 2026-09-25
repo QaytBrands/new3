@@ -22,7 +22,10 @@ export default async function ProgressPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Your progress</h1>
+      <div>
+        <h1 className="text-2xl font-bold">Your progress</h1>
+        <p className="text-xs text-slate-400">Days and review dates follow your time zone: {user.timezone}</p>
+      </div>
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="card p-4"><p className="label">Mastery</p><p className="text-2xl font-bold">{Math.round(mastery.averageMastery * 100)}%</p><ProgressBar className="mt-2" value={mastery.averageMastery * 100} tone="green" /></div>
         <div className="card p-4"><p className="label">Words</p><p className="text-2xl font-bold">{mastery.masteredWords}<span className="text-base font-normal text-slate-500"> mastered / {mastery.totalWords}</span></p></div>

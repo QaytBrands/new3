@@ -44,7 +44,7 @@ export default async function VocabularyAdmin({ params }: { params: Promise<{ id
                   <div className="grid gap-3 sm:grid-cols-3">
                     <Field label="German"><input className="input" name="german" defaultValue={s.german} required /></Field>
                     <Field label="English"><input className="input" name="english" defaultValue={s.english} required /></Field>
-                    <Field label="Audio URL"><input className="input" name="audioUrl" defaultValue={s.audioUrl ?? ""} /></Field>
+                    <Field label="Native audio URL"><input className="input" name="nativeAudioUrl" defaultValue={s.nativeAudioUrl ?? ""} /></Field>
                   </div>
                 </ActionForm>
                 <ActionForm action={deleteSentence} submitLabel="Delete" variant="secondary" inline confirm="Delete this sentence?" className="mt-2">
@@ -63,7 +63,7 @@ export default async function VocabularyAdmin({ params }: { params: Promise<{ id
             <div className="grid gap-3 sm:grid-cols-3">
               <Field label="German"><input className="input" name="german" required /></Field>
               <Field label="English"><input className="input" name="english" required /></Field>
-              <Field label="Audio URL"><input className="input" name="audioUrl" /></Field>
+              <Field label="Native audio URL"><input className="input" name="nativeAudioUrl" /></Field>
             </div>
           </ActionForm>
         )}

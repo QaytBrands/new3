@@ -3,6 +3,7 @@ import { requirePageAdmin } from "@/lib/auth/guards";
 import { PERMISSIONS } from "@/lib/permissions";
 import { ActionForm, Checkbox, Field } from "@/components/admin/ActionForm";
 import { createStaff, updateStaff } from "@/server/admin/users";
+import { TimeZoneSelect } from "@/components/admin/TimeZoneSelect";
 
 export const metadata = { title: "Staff" };
 
@@ -28,11 +29,12 @@ export default async function StaffPage() {
       <details className="card p-4">
         <summary className="cursor-pointer font-semibold">+ New staff member</summary>
         <ActionForm action={createStaff} submitLabel="Create staff account" resetOnSuccess className="mt-4">
-          <div className="grid gap-3 sm:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-5">
             <Field label="Name"><input className="input" name="name" required /></Field>
             <Field label="Username"><input className="input" name="username" required autoCapitalize="none" /></Field>
             <Field label="Email"><input className="input" name="email" type="email" /></Field>
             <Field label="Password"><input className="input" name="password" type="text" required minLength={8} /></Field>
+            <Field label="Time zone"><TimeZoneSelect /></Field>
           </div>
           <PermissionBoxes />
         </ActionForm>
@@ -47,6 +49,7 @@ export default async function StaffPage() {
               <Field label="Name"><input className="input" name="name" defaultValue={s.name} required /></Field>
               <Field label="Email"><input className="input" name="email" type="email" defaultValue={s.email ?? ""} /></Field>
               <Field label="New password" hint="Leave blank to keep"><input className="input" name="password" type="text" minLength={8} /></Field>
+              <Field label="Time zone"><TimeZoneSelect defaultValue={s.timezone} /></Field>
             </div>
             <PermissionBoxes granted={s.permissions} />
             <Checkbox name="active" label="Account active" defaultChecked={s.active} />

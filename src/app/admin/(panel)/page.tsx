@@ -30,13 +30,16 @@ export default async function AdminDashboard() {
       </div>
     );
   }
-  const s = await getAdminStats();
+  const s = await getAdminStats(user.timezone);
   const maxDay = Math.max(1, ...s.pronunciation.byDay.map(([, n]) => n));
   const canViewStudents = hasPermission(user, "VIEW_STUDENTS");
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold">Dashboard</h1>
+      <div className="flex items-baseline justify-between gap-3">
+        <h1 className="text-xl font-bold">Dashboard</h1>
+        <p className="text-xs text-slate-500">“Today” is your local day ({user.timezone}) · <Link href="/admin/account" className="underline">change</Link></p>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Total students" value={s.totalStudents} />
         <Stat label="Active students" value={s.activeStudents} sub="signed in within 7 days" />
@@ -44,7 +47,7 @@ export default async function AdminDashboard() {
         <Stat label="Tests completed" value={s.testsCompleted} sub={`${s.testsCompletedToday} today`} />
         <Stat label="Average test score" value={s.averageScore != null ? `${Math.round(s.averageScore)}%` : "—"} sub="last 30 days" />
         <Stat label="Vocabulary completion" value={`${Math.round(s.vocabularyCompletion * 100)}%`} sub={`${s.wordsSeen} of ${s.wordsAssigned} unlocked words seen`} />
-        <Stat label="Pronunciation attempts" value={s.pronunciation.total} sub={`${s.pronunciation.students} students, last 7 days`} />
+        <Stat label="Pronunciation attempts" value={s.pronunciation.total} sub={`${s.pronunciation.students} students, last 7 local days`} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">

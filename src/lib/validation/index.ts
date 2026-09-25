@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isAllowedAudioUrl } from "@/lib/audio";
 
 const optionalText = z
   .string()
@@ -19,6 +20,11 @@ export const articleSchema = z
   .refine((s) => s === null || ["der", "die", "das"].includes(s), "Article must be der, die or das")
   .transform((s) => (s ? (s.toUpperCase() as "DER" | "DIE" | "DAS") : null));
 
+const nativeAudioUrlSchema = optionalText.refine(
+  (v) => v === null || (v.length <= 2000 && isAllowedAudioUrl(v)),
+  "Native audio URL must be an https:// URL or a site path starting with /",
+);
+
 export const tagsSchema = z
   .string()
   .optional()
@@ -37,7 +43,7 @@ export const vocabularySchema = z.object({
   partOfSpeech: optionalText,
   ipa: optionalText,
   phonetic: optionalText,
-  audioUrl: optionalText,
+  nativeAudioUrl: nativeAudioUrlSchema,
   difficulty: z.coerce.number().int().min(1).max(5).default(1),
   tags: tagsSchema,
 });
@@ -47,7 +53,7 @@ export type VocabularyInput = z.infer<typeof vocabularySchema>;
 export const sentenceSchema = z.object({
   german: z.string().trim().min(1).max(500),
   english: z.string().trim().min(1).max(500),
-  audioUrl: optionalText,
+  nativeAudioUrl: nativeAudioUrlSchema,
 });
 
 export const csvRowSchema = vocabularySchema.extend({
@@ -71,7 +77,7 @@ export const CSV_COLUMNS = [
   "part_of_speech",
   "ipa",
   "phonetic",
-  "audio_url",
+  "native_audio_url",
   "example_de",
   "example_en",
   "difficulty",
@@ -84,7 +90,11 @@ export function normalizeCsvRecord(record: Record<string, string>): Record<strin
   for (const [k, v] of Object.entries(record)) {
     const key = k.trim().toLowerCase();
     const mapped =
-      key === "part_of_speech" ? "partOfSpeech" : key === "audio_url" ? "audioUrl" : key;
+      key === "part_of_speech"
+        ? "partOfSpeech"
+        : key === "native_audio_url" || key === "audio_url" // audio_url: legacy header
+          ? "nativeAudioUrl"
+          : key;
     out[mapped] = v ?? "";
   }
   return out;

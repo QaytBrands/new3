@@ -4,7 +4,7 @@ import { authConfig } from "@/lib/auth/config";
 
 const { auth } = NextAuth(authConfig);
 
-const STUDENT_PREFIXES = ["/dashboard", "/levels", "/chapters", "/lessons", "/tests", "/attempts", "/progress", "/words", "/pronounce"];
+const STUDENT_PREFIXES = ["/dashboard", "/levels", "/chapters", "/lessons", "/tests", "/attempts", "/progress", "/words"];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
@@ -22,5 +22,5 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|uploads|favicon.ico).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };

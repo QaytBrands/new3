@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/time";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
@@ -37,7 +38,7 @@ export default async function TestIntroPage({ params }: { params: Promise<{ id: 
             {done.map((a) => (
               <li key={a.id}>
                 <Link href={`/attempts/${a.id}`} className="flex items-center justify-between py-2 text-sm">
-                  <span>Attempt {a.attemptNumber} · {a.completedAt!.toLocaleDateString()}</span>
+                  <span>Attempt {a.attemptNumber} · {formatDate(a.completedAt, user.timezone)}</span>
                   <span className={a.passed ? "font-semibold text-emerald-600" : "font-semibold text-rose-600"}>{a.percentage}% {a.passed ? "passed" : "not passed"}</span>
                 </Link>
               </li>

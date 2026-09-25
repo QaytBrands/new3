@@ -18,7 +18,7 @@ export default async function PronouncePage({ params, searchParams }: { params: 
       {lesson.vocabulary.length ? (
         <PronunciationPractice
           initialId={word}
-          words={lesson.vocabulary.map((v) => ({ id: v.id, german: v.german, english: v.english, article: v.article, ipa: v.ipa, phonetic: v.phonetic, audioUrl: v.audioUrl }))}
+          words={lesson.vocabulary.map((v) => ({ id: v.id, german: v.german, english: v.english, article: v.article, ipa: v.ipa, phonetic: v.phonetic, nativeAudioUrl: v.nativeAudioUrl }))}
         />
       ) : (
         <p className="text-center text-slate-500">This lesson has no words yet.</p>

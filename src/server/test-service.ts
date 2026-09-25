@@ -10,6 +10,7 @@ import type { PromptData, QuizVocab } from "@/lib/tests/types";
 import { onDailyTestPassed, onWeeklyTestPassed } from "@/lib/progression";
 import { getAccess } from "./student-data";
 import { recordReview } from "./vocab-progress";
+import { safeTimeZone } from "@/lib/time";
 
 /** Seconds of network/clock slack allowed after a time limit expires. */
 const GRACE_SEC = 20;
@@ -19,16 +20,16 @@ const vocabInclude = { sentences: { select: { german: true, english: true } } } 
 export class TestAccessError extends Error {}
 
 type TestWithScope = Test & {
-  lesson: { id: string; chapterId: string; chapter: { levelId: string } } | null;
-  chapter: { id: string; levelId: string; lessons: { id: string }[] } | null;
+  lesson: { id: string; chapterId: string; chapter: { levelId: string; level: { published: boolean } } } | null;
+  chapter: { id: string; levelId: string; level: { published: boolean }; lessons: { id: string }[] } | null;
 };
 
 async function loadTest(testId: string): Promise<TestWithScope | null> {
   return prisma.test.findUnique({
     where: { id: testId },
     include: {
-      lesson: { select: { id: true, chapterId: true, chapter: { select: { levelId: true } } } },
-      chapter: { select: { id: true, levelId: true, lessons: { select: { id: true } } } },
+      lesson: { select: { id: true, chapterId: true, chapter: { select: { levelId: true, level: { select: { published: true } } } } } },
+      chapter: { select: { id: true, levelId: true, level: { select: { published: true } }, lessons: { select: { id: true } } } },
     },
   });
 }
@@ -36,6 +37,8 @@ async function loadTest(testId: string): Promise<TestWithScope | null> {
 export async function getTestForStudent(userId: string, testId: string) {
   const test = await loadTest(testId);
   if (!test || !test.published) return null;
+  if (test.lesson && !test.lesson.chapter.level.published) return null;
+  if (test.chapter && !test.chapter.level.published) return null;
   const access = await getAccess(userId);
   if (test.lesson) {
     const ok = canAccessLesson(access, { id: test.lesson.id, chapterId: test.lesson.chapterId, levelId: test.lesson.chapter.levelId });
@@ -51,7 +54,7 @@ export async function getTestForStudent(userId: string, testId: string) {
   return null;
 }
 
-function toQuiz(v: { id: string; german: string; english: string; article: QuizVocab["article"]; ipa: string | null; phonetic: string | null; audioUrl: string | null; sentences: { german: string; english: string }[] }): QuizVocab {
+function toQuiz(v: { id: string; german: string; english: string; article: QuizVocab["article"]; ipa: string | null; phonetic: string | null; nativeAudioUrl: string | null; sentences: { german: string; english: string }[] }): QuizVocab {
   return v;
 }
 
@@ -160,9 +163,10 @@ export async function finalizeAttempt(userId: string, attemptId: string, given: 
   const now = new Date();
   const attempt = await prisma.testAttempt.findFirst({
     where: { id: attemptId, userId },
-    include: { test: true, answers: { orderBy: { position: "asc" } } },
+    include: { test: true, answers: { orderBy: { position: "asc" } }, user: { select: { timezone: true } } },
   });
   if (!attempt) throw new TestAccessError("Attempt not found.");
+  const timeZone = safeTimeZone(attempt.user.timezone);
   if (attempt.completedAt) return attempt;
 
   // Answers submitted after the time limit (plus grace) are discarded.
@@ -208,7 +212,7 @@ export async function finalizeAttempt(userId: string, attemptId: string, given: 
         where: { id: r.a.id },
         data: { givenAnswer: r.givenAnswer, isCorrect: r.isCorrect, pronunciationAttemptId: r.recordingId },
       });
-      if (r.isCorrect !== null) await recordReview(tx, userId, r.a.vocabularyId, r.isCorrect, now);
+      if (r.isCorrect !== null) await recordReview(tx, userId, r.a.vocabularyId, r.isCorrect, now, timeZone);
     }
     if (score.passed) {
       if (attempt.test.kind === "DAILY" && attempt.test.lessonId) await onDailyTestPassed(tx, userId, attempt.test.lessonId);

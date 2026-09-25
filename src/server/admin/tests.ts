@@ -34,6 +34,8 @@ export async function saveTest(_: FormState, fd: FormData): Promise<FormState> {
       const kind = z.enum(["DAILY", "WEEKLY"]).parse(str(fd, "kind"));
       const lessonId = kind === "DAILY" ? z.string().min(1).parse(str(fd, "lessonId")) : null;
       const chapterId = kind === "WEEKLY" ? z.string().min(1).parse(str(fd, "chapterId")) : null;
+      const exists = lessonId ? await prisma.lesson.count({ where: { id: lessonId } }) : await prisma.chapter.count({ where: { id: chapterId! } });
+      if (!exists) throw new UserFacingError("Lesson or chapter not found.");
       savedId = (await prisma.test.create({ data: { ...data, kind, lessonId, chapterId } })).id;
     }
     await audit(actor.id, id ? "test.update" : "test.create", savedId);

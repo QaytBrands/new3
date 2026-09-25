@@ -1,9 +1,11 @@
+import { formatDate } from "@/lib/time";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requirePagePermission } from "@/lib/auth/guards";
 import { hasPermission } from "@/lib/permissions";
 import { ActionForm, Field } from "@/components/admin/ActionForm";
 import { createStudent } from "@/server/admin/users";
+import { TimeZoneSelect } from "@/components/admin/TimeZoneSelect";
 
 export const metadata = { title: "Students" };
 
@@ -39,6 +41,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
               <Field label="Username"><input className="input" name="username" required autoCapitalize="none" /></Field>
               <Field label="Email (optional)"><input className="input" name="email" type="email" /></Field>
               <Field label="Initial password"><input className="input" name="password" type="text" required minLength={8} /></Field>
+              <Field label="Time zone" hint="Defines the student's “today”"><TimeZoneSelect /></Field>
             </div>
           </ActionForm>
         </details>
@@ -57,7 +60,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                 <td>{s.active ? "Active" : <span className="text-rose-600">Disabled</span>}</td>
                 <td>{s._count.lessonProgress}</td>
                 <td>{s._count.testAttempts}</td>
-                <td className="text-slate-500">{s.lastActiveAt?.toLocaleDateString() ?? "never"}</td>
+                <td className="text-slate-500">{s.lastActiveAt ? formatDate(s.lastActiveAt, user.timezone) : "never"}</td>
               </tr>
             ))}
             {students.length === 0 && <tr><td colSpan={6} className="text-slate-500">No students found.</td></tr>}

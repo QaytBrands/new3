@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
+import { zonedDayRange } from "@/lib/time";
 import { buildAccessSet, canAccessChapter, canAccessLesson, visibleLevelIds, type AccessSet } from "@/lib/access";
 
 export async function getAccess(userId: string): Promise<AccessSet> {
@@ -151,12 +152,14 @@ export function findNextActivity(levels: LevelNode[], hasRevision: boolean): Nex
   return { kind: "done", href: "/progress", label: "View your progress" };
 }
 
-export async function getRevisionWords(userId: string, limit = 8) {
+/** Words due by the end of the student's local day, plus words marked difficult. */
+export async function getRevisionWords(userId: string, timeZone: string, now = new Date(), limit = 8) {
+  const { end } = zonedDayRange(now, timeZone);
   return prisma.vocabularyProgress.findMany({
-    where: { userId, OR: [{ nextReviewAt: { lte: new Date() } }, { difficult: true }] },
+    where: { userId, OR: [{ nextReviewAt: { lt: end } }, { difficult: true }] },
     orderBy: [{ difficult: "desc" }, { nextReviewAt: "asc" }],
     take: limit,
-    include: { vocabulary: { select: { id: true, german: true, english: true, article: true, audioUrl: true } } },
+    include: { vocabulary: { select: { id: true, german: true, english: true, article: true, nativeAudioUrl: true } } },
   });
 }
 
@@ -212,10 +215,22 @@ export async function getAccessibleLesson(userId: string, lessonId: string) {
 export async function assertVocabularyAccess(userId: string, vocabularyId: string) {
   const v = await prisma.vocabulary.findUnique({
     where: { id: vocabularyId },
-    select: { id: true, german: true, article: true, lessonId: true, lesson: { select: { chapterId: true, chapter: { select: { levelId: true } } } } },
+    select: { id: true, german: true, article: true, lessonId: true, lesson: { select: { chapterId: true, chapter: { select: { levelId: true, level: { select: { published: true } } } } } } },
   });
-  if (!v) return null;
+  if (!v || !v.lesson.chapter.level.published) return null;
   const access = await getAccess(userId);
   const ok = canAccessLesson(access, { id: v.lessonId, chapterId: v.lesson.chapterId, levelId: v.lesson.chapter.levelId });
   return ok ? v : null;
+}
+
+/** Activity within the student's local calendar day. */
+export async function getStudentToday(userId: string, timeZone: string, now = new Date()) {
+  const { start, end } = zonedDayRange(now, timeZone);
+  const [lessonsCompleted, testsCompleted, testsPassed, reviewsDue] = await Promise.all([
+    prisma.lessonProgress.count({ where: { userId, completedAt: { gte: start, lt: end } } }),
+    prisma.testAttempt.count({ where: { userId, completedAt: { gte: start, lt: end } } }),
+    prisma.testAttempt.count({ where: { userId, completedAt: { gte: start, lt: end }, passed: true } }),
+    prisma.vocabularyProgress.count({ where: { userId, nextReviewAt: { lt: end } } }),
+  ]);
+  return { lessonsCompleted, testsCompleted, testsPassed, reviewsDue };
 }

@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/lib/time";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requirePagePermission } from "@/lib/auth/guards";
@@ -48,7 +49,7 @@ export default async function ResultsPage({ searchParams }: { searchParams: Prom
                 <td>{a.attemptNumber}</td>
                 <td>{a.correctCount}/{a.total} ({a.percentage}%)</td>
                 <td>{a.passed ? <span className="text-emerald-600">Passed</span> : <span className="text-rose-600">Failed</span>}</td>
-                <td className="text-slate-500">{a.completedAt?.toLocaleString()}</td>
+                <td className="text-slate-500">{formatDateTime(a.completedAt, user.timezone)}</td>
               </tr>
             ))}
           </tbody>

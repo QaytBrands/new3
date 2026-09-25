@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import type { Permission } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { hasPermission, isAdmin } from "@/lib/permissions";
+import { safeTimeZone } from "@/lib/time";
 import { auth } from "./index";
 
 export class ForbiddenError extends Error {
@@ -20,10 +21,10 @@ export const getCurrentUser = cache(async () => {
   if (!id) return null;
   const user = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, name: true, username: true, role: true, permissions: true, active: true, lastActiveAt: true },
+    select: { id: true, name: true, username: true, role: true, permissions: true, active: true, lastActiveAt: true, timezone: true },
   });
   if (!user || !user.active) return null;
-  return user;
+  return { ...user, timezone: safeTimeZone(user.timezone) };
 });
 
 export type CurrentUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;

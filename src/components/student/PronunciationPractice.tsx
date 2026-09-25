@@ -7,7 +7,7 @@ import { AudioButton } from "@/components/ui/AudioButton";
 import { articleColor } from "@/components/ui/ArticleBadge";
 import { Recorder } from "./Recorder";
 
-type Word = { id: string; german: string; english: string; article: Article | null; ipa: string | null; phonetic: string | null; audioUrl: string | null };
+type Word = { id: string; german: string; english: string; article: Article | null; ipa: string | null; phonetic: string | null; nativeAudioUrl: string | null };
 
 export function PronunciationPractice({ words, initialId }: { words: Word[]; initialId?: string }) {
   const start = Math.max(0, words.findIndex((w) => w.id === initialId));
@@ -35,7 +35,7 @@ export function PronunciationPractice({ words, initialId }: { words: Word[]; ini
         </dl>
         <div className="mt-6">
           <p className="mb-2 text-sm font-medium text-slate-600">1. Listen</p>
-          <AudioButton text={spoken} audioUrl={w.audioUrl} size="lg" showSource />
+          <AudioButton text={spoken} nativeAudioUrl={w.nativeAudioUrl} size="lg" showSource />
         </div>
         <div className="mt-6 border-t border-slate-100 pt-5">
           <p className="mb-2 text-sm font-medium text-slate-600">2. Record yourself</p>

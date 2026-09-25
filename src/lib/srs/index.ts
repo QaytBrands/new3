@@ -1,3 +1,5 @@
+import { DEFAULT_TIMEZONE, startOfZonedDay } from "@/lib/time";
+
 /**
  * Review scheduling. v1 is a simplified SM-2 so the stored fields (easeFactor, intervalDays,
  * repetitions, nextReviewAt) are already compatible with a full spaced-repetition scheduler.
@@ -18,8 +20,6 @@ export type ReviewResult = SrsState & {
   lastIncorrectAt?: Date;
 };
 
-const DAY = 24 * 60 * 60 * 1000;
-
 export function computeMastery(s: Pick<SrsState, "timesCorrect" | "timesIncorrect" | "repetitions">) {
   const answered = s.timesCorrect + s.timesIncorrect;
   if (answered === 0) return 0;
@@ -31,7 +31,12 @@ export function computeMastery(s: Pick<SrsState, "timesCorrect" | "timesIncorrec
   return Math.round(Math.min(1, accuracy * confidence * 0.8 + streak * 0.2) * 100) / 100;
 }
 
-export function applyReview(state: SrsState, correct: boolean, now = new Date()): ReviewResult {
+/**
+ * Applies a graded review. Correct answers schedule the next review for local midnight
+ * `intervalDays` calendar days later in the student's time zone, so a word becomes due at the
+ * start of the student's day rather than at an arbitrary UTC time. Incorrect answers are due now.
+ */
+export function applyReview(state: SrsState, correct: boolean, now = new Date(), timeZone = DEFAULT_TIMEZONE): ReviewResult {
   const next: SrsState = { ...state, timesSeen: state.timesSeen + 1 };
   let lastIncorrectAt: Date | undefined;
   if (correct) {
@@ -47,6 +52,6 @@ export function applyReview(state: SrsState, correct: boolean, now = new Date())
     next.easeFactor = Math.max(1.3, state.easeFactor - 0.2);
     lastIncorrectAt = now;
   }
-  const nextReviewAt = new Date(now.getTime() + Math.max(next.intervalDays, correct ? 1 : 0) * DAY);
+  const nextReviewAt = correct ? startOfZonedDay(now, timeZone, Math.max(1, Math.ceil(next.intervalDays))) : now;
   return { ...next, mastery: computeMastery(next), lastReviewedAt: now, nextReviewAt, lastIncorrectAt };
 }

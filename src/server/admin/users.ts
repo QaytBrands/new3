@@ -5,11 +5,17 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { assertAdmin, assertPermission } from "@/lib/auth/guards";
+import { assertAdmin, assertPermission, getCurrentUser, ForbiddenError } from "@/lib/auth/guards";
 import { parsePermissions } from "@/lib/permissions";
+import { DEFAULT_TIMEZONE, isValidTimeZone } from "@/lib/time";
 import { audit, bool, passwordSchema, run, str, usernameSchema, UserFacingError, type FormState } from "./common";
 
 const nameSchema = z.string().trim().min(1, "Name is required").max(100);
+const timezoneSchema = z
+  .string()
+  .trim()
+  .transform((v) => v || DEFAULT_TIMEZONE)
+  .refine(isValidTimeZone, "Unknown time zone");
 const emailSchema = z.union([z.literal(""), z.email()]).transform((e) => e || null);
 
 async function findStudent(id: string) {
@@ -25,6 +31,7 @@ export async function createStudent(_: FormState, fd: FormData): Promise<FormSta
       username: usernameSchema.parse(str(fd, "username")),
       name: nameSchema.parse(str(fd, "name")),
       email: emailSchema.parse(str(fd, "email")),
+      timezone: timezoneSchema.parse(str(fd, "timezone")),
       passwordHash: await bcrypt.hash(passwordSchema.parse(str(fd, "password")), 10),
     };
     const s = await prisma.user.create({ data: { ...data, role: "STUDENT" } });
@@ -44,6 +51,7 @@ export async function updateStudent(_: FormState, fd: FormData): Promise<FormSta
       data: {
         name: nameSchema.parse(str(fd, "name")),
         email: emailSchema.parse(str(fd, "email")),
+        timezone: timezoneSchema.parse(str(fd, "timezone")),
         active: bool(fd, "active"),
         ...(password ? { passwordHash: await bcrypt.hash(passwordSchema.parse(password), 10) } : {}),
       },
@@ -122,6 +130,7 @@ export async function createStaff(_: FormState, fd: FormData): Promise<FormState
         username: usernameSchema.parse(str(fd, "username")),
         name: nameSchema.parse(str(fd, "name")),
         email: emailSchema.parse(str(fd, "email")),
+        timezone: timezoneSchema.parse(str(fd, "timezone")),
         passwordHash: await bcrypt.hash(passwordSchema.parse(str(fd, "password")), 10),
         permissions: parsePermissions(fd.getAll("permissions")),
       },
@@ -145,6 +154,7 @@ export async function updateStaff(_: FormState, fd: FormData): Promise<FormState
       data: {
         name: nameSchema.parse(str(fd, "name")),
         email: emailSchema.parse(str(fd, "email")),
+        timezone: timezoneSchema.parse(str(fd, "timezone")),
         active: bool(fd, "active"),
         permissions,
         ...(password ? { passwordHash: await bcrypt.hash(passwordSchema.parse(password), 10) } : {}),
@@ -152,5 +162,16 @@ export async function updateStaff(_: FormState, fd: FormData): Promise<FormState
     });
     await audit(actor.id, "staff.update", id, { permissions, passwordChanged: !!password });
     revalidatePath("/admin/staff");
+  });
+}
+
+/** Any signed-in admin/staff member may change their own time zone (and nothing else here). */
+export async function updateOwnTimezone(_: FormState, fd: FormData): Promise<FormState> {
+  return run(async () => {
+    const me = await getCurrentUser();
+    if (!me || (me.role !== "ADMIN" && me.role !== "STAFF")) throw new ForbiddenError();
+    await prisma.user.update({ where: { id: me.id }, data: { timezone: timezoneSchema.parse(str(fd, "timezone")) } });
+    revalidatePath("/admin");
+    return "Time zone updated.";
   });
 }

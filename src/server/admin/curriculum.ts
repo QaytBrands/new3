@@ -20,7 +20,7 @@ function vocabFromForm(fd: FormData) {
     partOfSpeech: str(fd, "partOfSpeech"),
     ipa: str(fd, "ipa"),
     phonetic: str(fd, "phonetic"),
-    audioUrl: str(fd, "audioUrl"),
+    nativeAudioUrl: str(fd, "nativeAudioUrl"),
     difficulty: str(fd, "difficulty") || "1",
     tags: str(fd, "tags"),
   });
@@ -119,7 +119,8 @@ export async function deleteLesson(_: FormState, fd: FormData): Promise<FormStat
 
 // ---- Vocabulary (MANAGE_VOCABULARY) ------------------------------------------
 
-export async function assertLessonCapacity(lessonId: string, adding: number) {
+// Not exported: every export of a "use server" module is a public endpoint.
+async function assertLessonCapacity(lessonId: string, adding: number) {
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
     select: { _count: { select: { vocabulary: true } }, chapter: { select: { level: { select: { wordsPerLesson: true } } } } },
@@ -189,7 +190,7 @@ export async function saveSentence(_: FormState, fd: FormData): Promise<FormStat
   return run(async () => {
     const actor = await assertPermission("MANAGE_SENTENCES");
     const id = str(fd, "id");
-    const data = sentenceSchema.parse({ german: str(fd, "german"), english: str(fd, "english"), audioUrl: str(fd, "audioUrl") });
+    const data = sentenceSchema.parse({ german: str(fd, "german"), english: str(fd, "english"), nativeAudioUrl: str(fd, "nativeAudioUrl") });
     let vocabularyId = str(fd, "vocabularyId");
     if (id) {
       vocabularyId = (await prisma.exampleSentence.update({ where: { id }, data })).vocabularyId;

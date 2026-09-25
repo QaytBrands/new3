@@ -19,8 +19,8 @@ export type PlayerWord = {
   partOfSpeech: string | null;
   ipa: string | null;
   phonetic: string | null;
-  audioUrl: string | null;
-  sentences: { id: string; german: string; english: string; audioUrl: string | null }[];
+  nativeAudioUrl: string | null;
+  sentences: { id: string; german: string; english: string; nativeAudioUrl: string | null }[];
   difficult: boolean;
 };
 
@@ -122,7 +122,7 @@ export function LessonPlayer({
             {word.phonetic && <span className="rounded-md bg-amber-50 px-2 py-0.5 text-sm font-semibold text-amber-800" title="Say it like">🗣 {word.phonetic}</span>}
           </div>
           <div className="mt-5">
-            <AudioButton text={word.article ? `${word.article.toLowerCase()} ${word.german}` : word.german} audioUrl={word.audioUrl} size="lg" showSource />
+            <AudioButton text={word.article ? `${word.article.toLowerCase()} ${word.german}` : word.german} nativeAudioUrl={word.nativeAudioUrl} size="lg" showSource />
           </div>
 
           <div className="mt-6 w-full">
@@ -138,7 +138,7 @@ export function LessonPlayer({
           <div className="space-y-3 border-t border-slate-100 bg-slate-50/60 px-6 py-4">
             {word.sentences.map((s) => (
               <div key={s.id} className="flex items-start gap-3">
-                <AudioButton text={s.german} audioUrl={s.audioUrl} size="sm" label={`Play sentence: ${s.german}`} />
+                <AudioButton text={s.german} nativeAudioUrl={s.nativeAudioUrl} size="sm" label={`Play sentence: ${s.german}`} />
                 <div>
                   <p className="text-lg font-medium">{s.german}</p>
                   <p className="text-sm text-slate-500">{s.english}</p>

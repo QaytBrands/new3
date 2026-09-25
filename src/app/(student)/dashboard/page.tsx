@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireStudent } from "@/lib/auth/guards";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { GermanWord } from "@/components/ui/ArticleBadge";
-import { findNextActivity, getMasterySummary, getRecentMistakes, getRevisionWords, getStudentCurriculum, type TestStatus } from "@/server/student-data";
+import { findNextActivity, getMasterySummary, getRecentMistakes, getRevisionWords, getStudentCurriculum, getStudentToday, type TestStatus } from "@/server/student-data";
 
 export const metadata = { title: "Dashboard" };
 
@@ -18,10 +18,11 @@ function TestPill({ status, label }: { status: TestStatus; label: string }) {
 export default async function Dashboard() {
   const user = await requireStudent();
   const levels = await getStudentCurriculum(user.id);
-  const [revision, mistakes, mastery] = await Promise.all([
-    getRevisionWords(user.id),
+  const [revision, mistakes, mastery, today_] = await Promise.all([
+    getRevisionWords(user.id, user.timezone),
     getRecentMistakes(user.id),
     getMasterySummary(user.id, levels),
+    getStudentToday(user.id, user.timezone),
   ]);
 
   if (levels.length === 0) {
@@ -46,6 +47,10 @@ export default async function Dashboard() {
       <div>
         <p className="text-sm text-slate-500">{ctx ? `${ctx.level.code} · ${ctx.level.name}` : "All caught up"}</p>
         <h1 className="text-2xl font-bold sm:text-3xl">Hallo, {user.name.split(" ")[0]}! 👋</h1>
+        <p className="mt-1 text-sm text-slate-500" data-testid="today-summary">
+          Today: {today_.lessonsCompleted} lesson{today_.lessonsCompleted === 1 ? "" : "s"} completed · {today_.testsCompleted} test{today_.testsCompleted === 1 ? "" : "s"} taken
+          {today_.reviewsDue > 0 && ` · ${today_.reviewsDue} review${today_.reviewsDue === 1 ? "" : "s"} due`}
+        </p>
       </div>
 
       <section className="card overflow-hidden bg-gradient-to-br from-brand-600 to-brand-700 text-white">

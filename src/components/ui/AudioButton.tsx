@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import clsx from "clsx";
+import { AUDIO_SOURCE_LABELS, resolveAudioSource, type AudioSource } from "@/lib/audio";
 
 export function speakGerman(text: string, rate = 0.9): boolean {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return false;
@@ -16,42 +17,45 @@ export function speakGerman(text: string, rate = 0.9): boolean {
 }
 
 /**
- * Plays the uploaded reference recording when available; otherwise falls back to the
- * browser's German speech synthesis and labels it as a synthesized voice.
+ * Plays the native recording when one is attached; otherwise (or if it fails to load) uses the
+ * browser's German speech synthesis. The label always says which one the student is hearing.
  */
 export function AudioButton({
   text,
-  audioUrl,
+  nativeAudioUrl,
   size = "md",
   label,
   showSource = false,
 }: {
   text: string;
-  audioUrl?: string | null;
+  nativeAudioUrl?: string | null;
   size?: "sm" | "md" | "lg";
   label?: string;
   showSource?: boolean;
 }) {
   const [playing, setPlaying] = useState(false);
+  const [nativeFailed, setNativeFailed] = useState(false);
+  const source: AudioSource = resolveAudioSource(text, nativeFailed ? null : nativeAudioUrl);
 
   async function play(rate: number) {
     setPlaying(true);
-    try {
-      if (audioUrl) {
-        const a = new Audio(audioUrl);
+    if (source.kind === "native") {
+      try {
+        const a = new Audio(source.url);
         a.playbackRate = rate < 0.8 ? 0.75 : 1;
         a.onended = () => setPlaying(false);
         await a.play();
         return;
+      } catch {
+        setNativeFailed(true);
       }
-      speakGerman(text, rate);
-    } catch {
-      speakGerman(text, rate);
     }
+    speakGerman(text, rate);
     setTimeout(() => setPlaying(false), 900);
   }
 
   const dims = size === "lg" ? "h-16 w-16" : size === "sm" ? "h-9 w-9" : "h-12 w-12";
+  const sourceLabel = AUDIO_SOURCE_LABELS[source.kind];
   return (
     <div className="inline-flex flex-col items-center gap-1">
       <div className="inline-flex items-center gap-2">
@@ -59,6 +63,8 @@ export function AudioButton({
           type="button"
           onClick={() => play(1)}
           aria-label={label ?? `Play pronunciation of ${text}`}
+          title={sourceLabel}
+          data-audio-source={source.kind}
           className={clsx(
             dims,
             "flex items-center justify-center rounded-full bg-brand-600 text-white shadow-md transition hover:bg-brand-700 active:scale-95",
@@ -81,7 +87,10 @@ export function AudioButton({
         )}
       </div>
       {showSource && (
-        <span className="text-[11px] text-slate-400">{audioUrl ? "Reference recording" : "Synthesized voice"}</span>
+        <span className={clsx("text-[11px]", source.kind === "native" ? "text-emerald-600" : "text-slate-400")}>
+          {sourceLabel}
+          {nativeFailed && " (recording unavailable)"}
+        </span>
       )}
     </div>
   );

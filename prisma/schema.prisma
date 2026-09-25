@@ -77,6 +77,8 @@ model User {
   passwordHash String
   active       Boolean      @default(true)
   permissions  Permission[] @default([])
+  /// IANA time zone (e.g. "Asia/Kolkata"). Defines this user's "today" for daily metrics and review dates.
+  timezone     String       @default("Asia/Kolkata")
   lastActiveAt DateTime?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
@@ -153,7 +155,8 @@ model Vocabulary {
   ipa          String?
   /// Learner-friendly phonetic spelling, e.g. "HOONT"
   phonetic     String?
-  audioUrl     String?
+  /// Native-speaker recording. When null, the client falls back to (labelled) speech synthesis.
+  nativeAudioUrl String?  @map("native_audio_url")
   difficulty   Int      @default(1)
   tags         String[] @default([])
   order        Int      @default(0)
@@ -174,7 +177,8 @@ model ExampleSentence {
   vocabulary   Vocabulary @relation(fields: [vocabularyId], references: [id], onDelete: Cascade)
   german       String
   english      String
-  audioUrl     String?
+  /// Native-speaker recording of the sentence; synthesized fallback when null.
+  nativeAudioUrl String?  @map("native_audio_url")
   order        Int        @default(0)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
@@ -321,7 +325,8 @@ model PronunciationAttempt {
   user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   vocabularyId String
   vocabulary   Vocabulary  @relation(fields: [vocabularyId], references: [id], onDelete: Cascade)
-  audioUrl     String?
+  /// Storage key of the student's recording (private; served only via an authorised route)
+  audioKey     String?     @map("audio_key")
   transcript   String?
   /// Whether the transcript matched the expected text (text comparison, not a pronunciation score)
   transcriptMatches Boolean?
@@ -356,4 +361,5 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+  @@index([action, target, createdAt])
 }

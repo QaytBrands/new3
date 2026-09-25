@@ -20,6 +20,19 @@ test.describe.serial("admin → student learning flow", () => {
 
     await page.reload();
     await page.getByRole("link", { name: student.name }).click();
+    // Attach a native recording to the second Day 1 word
+    await page.goto("/admin/curriculum");
+    await page.getByRole("link", { name: /Greetings/ }).first().click();
+    await page.getByRole("link", { name: "Hello & goodbye" }).click();
+    await page.getByRole("link", { name: /Tschüss/ }).click();
+    await expect(page).toHaveURL(/\/admin\/vocabulary\//);
+    await expect(page.getByRole("heading", { level: 1, name: /Tschüss/ })).toBeVisible();
+    await page.locator("input[name=nativeAudioUrl]").first().fill("https://example.com/audio/tschuess.mp3");
+    await page.getByRole("button", { name: "Save" }).first().click();
+    await expect(page.getByText("Saved.")).toBeVisible();
+
+    await page.goto("/admin/students");
+    await page.getByRole("link", { name: student.name }).click();
     const greetings = page.locator("li", { hasText: "Greetings" }).first();
     await greetings.getByRole("button", { name: "Unlock" }).first().click();
     await expect(greetings.getByRole("button", { name: "Lock" }).first()).toBeVisible();
@@ -38,10 +51,15 @@ test.describe.serial("admin → student learning flow", () => {
   test("student completes Day 1 and takes the daily test", async ({ page }) => {
     await login(page, "/login", student.username, student.password);
     await expect(page.getByRole("link", { name: /Start Day 1/ })).toBeVisible();
+    await expect(page.getByTestId("today-summary")).toContainText("Today: 0 lessons completed");
     await page.getByRole("link", { name: /Start Day 1/ }).click();
 
     await expect(page.getByRole("heading", { name: "Hallo" })).toBeVisible();
+    await expect(page.getByText("Synthesized voice").first()).toBeVisible();
     await page.getByRole("button", { name: "Mark difficult" }).click();
+    await page.getByRole("button", { name: "Next →" }).click();
+    await expect(page.getByRole("heading", { name: "Tschüss" })).toBeVisible();
+    await expect(page.getByText("Native recording").first()).toBeVisible();
     while (await page.getByRole("button", { name: "Next →" }).isVisible()) {
       await page.getByRole("button", { name: "Next →" }).click();
     }
@@ -71,6 +89,7 @@ test.describe.serial("admin → student learning flow", () => {
 
     await page.goto("/dashboard");
     await expect(page.getByText(/Revision words/)).toBeVisible();
+    await expect(page.getByTestId("today-summary")).toContainText("Today: 1 lesson completed · 1 test taken");
     await page.goto("/words?filter=difficult");
     await expect(page.getByText("Hallo").first()).toBeVisible();
   });

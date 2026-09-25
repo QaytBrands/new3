@@ -3,12 +3,20 @@ import type { Prisma } from "@prisma/client";
 import { applyReview } from "@/lib/srs";
 
 /** Records a graded review for a word, creating its progress row if needed. */
-export async function recordReview(tx: Prisma.TransactionClient, userId: string, vocabularyId: string, correct: boolean, now = new Date()) {
+export async function recordReview(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  vocabularyId: string,
+  correct: boolean,
+  now: Date,
+  timeZone: string,
+) {
   const current = await tx.vocabularyProgress.findUnique({ where: { userId_vocabularyId: { userId, vocabularyId } } });
   const r = applyReview(
     current ?? { timesSeen: 0, timesCorrect: 0, timesIncorrect: 0, easeFactor: 2.5, intervalDays: 0, repetitions: 0 },
     correct,
     now,
+    timeZone,
   );
   const data = {
     timesSeen: r.timesSeen,

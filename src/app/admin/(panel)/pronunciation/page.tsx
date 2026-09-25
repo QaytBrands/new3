@@ -1,3 +1,5 @@
+import { formatDateTime } from "@/lib/time";
+import { recordingAudioPath } from "@/server/pronunciation-service";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requirePageAdmin } from "@/lib/auth/guards";
@@ -5,7 +7,7 @@ import { requirePageAdmin } from "@/lib/auth/guards";
 export const metadata = { title: "Pronunciation" };
 
 export default async function PronunciationAdmin({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
-  await requirePageAdmin();
+  const user = await requirePageAdmin();
   const page = Math.max(1, Number((await searchParams).page) || 1);
   const take = 50;
   const [rows, total] = await Promise.all([
@@ -31,8 +33,8 @@ export default async function PronunciationAdmin({ searchParams }: { searchParam
                 <td>{r.transcript ?? <span className="text-slate-400">—</span>}</td>
                 <td>{r.transcriptMatches == null ? "—" : r.transcriptMatches ? "✓" : "✗"}</td>
                 <td>{r.score != null ? Math.round(r.score) : <span className="text-slate-400">n/a</span>}</td>
-                <td>{r.audioUrl ? <audio controls preload="none" src={r.audioUrl} className="h-8" /> : "—"}</td>
-                <td className="text-slate-500">{r.createdAt.toLocaleString()}</td>
+                <td>{r.audioKey ? <audio controls preload="none" src={recordingAudioPath(r.id)} className="h-8" /> : "—"}</td>
+                <td className="text-slate-500">{formatDateTime(r.createdAt, user.timezone)}</td>
               </tr>
             ))}
           </tbody>

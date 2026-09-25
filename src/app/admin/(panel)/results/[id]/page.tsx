@@ -1,3 +1,5 @@
+import { formatDateTime } from "@/lib/time";
+import { recordingAudioPath } from "@/server/pronunciation-service";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
@@ -6,13 +8,13 @@ import { QUESTION_TYPE_LABELS, type PromptData } from "@/lib/tests/types";
 
 export default async function AttemptDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await requirePagePermission("VIEW_TEST_RESULTS");
+  const user = await requirePagePermission("VIEW_TEST_RESULTS");
   const a = await prisma.testAttempt.findUnique({
     where: { id },
     include: {
       user: { select: { name: true } },
       test: { select: { title: true, passingScore: true } },
-      answers: { orderBy: { position: "asc" }, include: { pronunciationAttempt: { select: { audioUrl: true, transcript: true } } } },
+      answers: { orderBy: { position: "asc" }, include: { pronunciationAttempt: { select: { id: true, audioKey: true, transcript: true } } } },
     },
   });
   if (!a) notFound();
@@ -21,7 +23,7 @@ export default async function AttemptDetail({ params }: { params: Promise<{ id: 
       <Link href="/admin/results" className="text-sm text-slate-500">← Results</Link>
       <h1 className="text-xl font-bold">{a.user.name} — {a.test.title} (attempt {a.attemptNumber})</h1>
       <p className="text-sm text-slate-600">
-        {a.completedAt ? `${a.correctCount}/${a.total} correct · ${a.percentage}% · ${a.passed ? "passed" : "failed"} (pass ${a.test.passingScore}%) · ${a.durationSec}s · ${a.completedAt.toLocaleString()}` : "In progress"}
+        {a.completedAt ? `${a.correctCount}/${a.total} correct · ${a.percentage}% · ${a.passed ? "passed" : "failed"} (pass ${a.test.passingScore}%) · ${a.durationSec}s · ${formatDateTime(a.completedAt, user.timezone)}` : "In progress"}
       </p>
       <div className="card overflow-x-auto">
         <table className="table">
@@ -36,7 +38,7 @@ export default async function AttemptDetail({ params }: { params: Promise<{ id: 
                   <td>{x.questionType === "SENTENCE" ? pd?.sentence : x.questionType === "LISTENING" ? pd?.audioText : x.prompt}</td>
                   <td>
                     {x.givenAnswer ?? <span className="text-slate-400">—</span>}
-                    {x.pronunciationAttempt?.audioUrl && <audio controls preload="none" src={x.pronunciationAttempt.audioUrl} className="mt-1 h-8" />}
+                    {x.pronunciationAttempt?.audioKey && <audio controls preload="none" src={recordingAudioPath(x.pronunciationAttempt.id)} className="mt-1 h-8" />}
                   </td>
                   <td>{x.correctAnswer}</td>
                   <td>{x.isCorrect === null ? <span className="text-slate-400">not scored</span> : x.isCorrect ? "✓" : <span className="text-rose-600">✗</span>}</td>

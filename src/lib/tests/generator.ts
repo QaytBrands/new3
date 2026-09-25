@@ -95,7 +95,7 @@ export function buildQuestion(
       return {
         ...base,
         prompt: "Listen and choose the meaning",
-        promptData: { audioText: withArticle(v), audioUrl: v.audioUrl ?? null },
+        promptData: { audioText: withArticle(v), nativeAudioUrl: v.nativeAudioUrl ?? null },
         options: mc(v.english, others.map((o) => o.english), rng),
         correctAnswer: v.english,
       };
@@ -103,7 +103,7 @@ export function buildQuestion(
       return {
         ...base,
         prompt: withArticle(v),
-        promptData: { ipa: v.ipa ?? null, phonetic: v.phonetic ?? null, audioUrl: v.audioUrl ?? null },
+        promptData: { ipa: v.ipa ?? null, phonetic: v.phonetic ?? null, nativeAudioUrl: v.nativeAudioUrl ?? null },
         options: [],
         correctAnswer: v.german,
       };

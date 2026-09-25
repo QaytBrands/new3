@@ -113,7 +113,7 @@ export function TestRunner({
 
         {q.questionType === "LISTENING" ? (
           <div className="my-6 flex justify-center">
-            <AudioButton text={q.promptData?.audioText ?? ""} audioUrl={q.promptData?.audioUrl} size="lg" label="Play the word" />
+            <AudioButton text={q.promptData?.audioText ?? ""} nativeAudioUrl={q.promptData?.nativeAudioUrl ?? q.promptData?.audioUrl} size="lg" label="Play the word" />
           </div>
         ) : q.questionType === "SENTENCE" ? (
           <div id="q-prompt" className="my-4">
@@ -178,7 +178,7 @@ export function TestRunner({
                 {q.promptData?.phonetic && <span className="font-semibold text-amber-800">{q.promptData.phonetic}</span>}
               </p>
             )}
-            <AudioButton text={q.prompt} audioUrl={q.promptData?.audioUrl} showSource />
+            <AudioButton text={q.prompt} nativeAudioUrl={q.promptData?.nativeAudioUrl ?? q.promptData?.audioUrl} showSource />
             <div className="mt-4">
               <Recorder key={q.position} vocabularyId={q.vocabularyId} expected={q.prompt} compact onSaved={(id) => setAnswer(id)} />
             </div>

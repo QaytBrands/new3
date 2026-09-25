@@ -15,6 +15,7 @@ export const ADMIN_NAV: Item[] = [
   { href: "/admin/pronunciation", label: "Pronunciation", show: isAdmin },
   { href: "/admin/staff", label: "Staff", show: isAdmin },
   { href: "/admin/settings", label: "Settings", show: isAdmin },
+  { href: "/admin/account", label: "My account", show: () => true },
 ];
 
 export function canViewCurriculum(a: Actor) {

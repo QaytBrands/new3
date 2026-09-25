@@ -19,7 +19,7 @@ export function VocabularyFields({ v }: { v?: Partial<Vocabulary> }) {
       <Field label="IPA"><input className="input font-mono" name="ipa" defaultValue={v?.ipa ?? ""} placeholder="hʊnt" /></Field>
       <Field label="Learner pronunciation"><input className="input" name="phonetic" defaultValue={v?.phonetic ?? ""} placeholder="hoont" /></Field>
       <Field label="Difficulty (1–5)"><input className="input" type="number" min={1} max={5} name="difficulty" defaultValue={v?.difficulty ?? 1} /></Field>
-      <Field label="Audio URL" className="sm:col-span-2"><input className="input" name="audioUrl" defaultValue={v?.audioUrl ?? ""} placeholder="https://… (optional)" /></Field>
+      <Field label="Native audio URL" className="sm:col-span-2" hint="Native-speaker recording (https://…). If empty, students hear a labelled synthesized voice."><input className="input" name="nativeAudioUrl" defaultValue={v?.nativeAudioUrl ?? ""} placeholder="https://… (optional)" /></Field>
       <Field label="Tags" className="sm:col-span-2" hint="Separate with commas"><input className="input" name="tags" defaultValue={v?.tags?.join(", ") ?? ""} /></Field>
     </div>
   );
