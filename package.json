@@ -16,7 +16,8 @@
     "vercel-build": "prisma generate && prisma migrate deploy && next build",
     "postinstall": "prisma generate",
     "test:integration": "vitest run -c vitest.integration.config.ts",
-    "test:all": "npm test && npm run test:integration && npm run test:e2e"
+    "test:all": "npm test && npm run test:integration && npm run test:e2e",
+    "auth:dev": "tsx tests/support/e2e-auth-server.mts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -25,10 +26,8 @@
     "@neondatabase/auth": "0.5.0-beta",
     "@prisma/client": "^6.19.3",
     "@vercel/blob": "^2.8.0",
-    "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "next": "^16.3.6",
-    "next-auth": "^5.0.0-beta.32",
     "papaparse": "^5.7.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

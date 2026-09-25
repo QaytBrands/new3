@@ -147,6 +147,30 @@ test.describe.serial("Neon Auth sign-in, portals and sessions", () => {
     student.password = "reset-password-9";
   });
 
+  test("staff change their own password on My account (current password verified by Neon Auth)", async ({ browser }) => {
+    const page = await newPage(browser);
+    await login(page, "/admin/login", staff.username, staff.password);
+    await page.goto("/admin/account");
+    const form = page.locator("form", { has: page.getByRole("button", { name: "Change password" }) });
+    await form.getByLabel("Current password").fill("not-my-password");
+    await form.getByLabel(/^New password/).fill("staff-new-pass-7");
+    await form.getByLabel("Confirm new password").fill("staff-new-pass-7");
+    await form.getByRole("button", { name: "Change password" }).click();
+    await expect(page.getByText("Current password is incorrect.")).toBeVisible();
+
+    await form.getByLabel("Current password").fill(staff.password);
+    await form.getByRole("button", { name: "Change password" }).click();
+    await expect(page.getByText("Password changed.")).toBeVisible();
+
+    const old = await newPage(browser);
+    await attemptLogin(old, "/admin/login", staff.username, staff.password);
+    await expect(old.getByText("Incorrect username or password.")).toBeVisible();
+    const fresh = await newPage(browser);
+    await login(fresh, "/admin/login", staff.username, "staff-new-pass-7");
+    await expect(fresh).toHaveURL(/\/admin$/);
+    staff.password = "staff-new-pass-7";
+  });
+
   test("6. deactivation cuts off a signed-in student immediately and blocks new sign-ins", async ({ browser }) => {
     const s = await newPage(browser);
     await login(s, "/login", student.username, student.password);

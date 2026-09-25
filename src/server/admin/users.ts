@@ -9,6 +9,7 @@ import { parsePermissions } from "@/lib/permissions";
 import { DEFAULT_TIMEZONE, isValidTimeZone } from "@/lib/time";
 import { audit, bool, emailSchema, optionalEmailSchema, passwordSchema, run, str, usernameSchema, UserFacingError, type FormState } from "./common";
 import { applyAccountChanges, assertAccountAvailable, createLinkedUser, removeIdentity } from "./accounts";
+import { neonAuth } from "@/lib/auth/neon-server";
 
 const nameSchema = z.string().trim().min(1, "Name is required").max(100);
 const timezoneSchema = z
@@ -169,5 +170,23 @@ export async function updateOwnTimezone(_: FormState, fd: FormData): Promise<For
     await prisma.user.update({ where: { id: me.id }, data: { timezone: timezoneSchema.parse(str(fd, "timezone")) } });
     revalidatePath("/admin");
     return "Time zone updated.";
+  });
+}
+
+/**
+ * A signed-in admin/staff member changes their own password. Neon Auth verifies the current
+ * password against the caller's own session and signs out their other sessions.
+ */
+export async function changeOwnPassword(_: FormState, fd: FormData): Promise<FormState> {
+  return run(async () => {
+    const me = await getCurrentUser();
+    if (!me || (me.role !== "ADMIN" && me.role !== "STAFF")) throw new ForbiddenError();
+    const currentPassword = str(fd, "currentPassword");
+    const newPassword = passwordSchema.parse(str(fd, "newPassword"));
+    if (newPassword !== str(fd, "confirmPassword")) throw new UserFacingError("The new passwords don't match.");
+    const { error } = await neonAuth().changePassword({ currentPassword, newPassword, revokeOtherSessions: true });
+    if (error) throw new UserFacingError(error.status < 500 ? "Current password is incorrect." : "Could not change the password. Try again.");
+    await audit(me.id, "account.changePassword", me.id);
+    return "Password changed. Your other sessions were signed out.";
   });
 }
