@@ -1,0 +1,359 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  STAFF
+  STUDENT
+}
+
+/// Staff permissions. Admins implicitly hold all of them; staff hold only what is listed.
+enum Permission {
+  VIEW_STUDENTS
+  CREATE_STUDENTS
+  EDIT_STUDENTS
+  VIEW_PROGRESS
+  MANAGE_LEVELS
+  MANAGE_CHAPTERS
+  MANAGE_VOCABULARY
+  MANAGE_SENTENCES
+  MANAGE_TESTS
+  UNLOCK_CHAPTERS
+  UNLOCK_LEVELS
+  VIEW_TEST_RESULTS
+}
+
+enum Article {
+  DER
+  DIE
+  DAS
+}
+
+enum TestKind {
+  DAILY
+  WEEKLY
+}
+
+enum QuestionType {
+  DE_TO_EN
+  EN_TO_DE
+  ARTICLE
+  SPELLING
+  SENTENCE
+  LISTENING
+  PRONUNCIATION
+}
+
+enum UnlockScope {
+  LEVEL
+  CHAPTER
+  LESSON
+}
+
+enum UnlockSource {
+  MANUAL
+  AUTO
+}
+
+enum LessonStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model User {
+  id           String       @id @default(cuid())
+  role         Role
+  username     String       @unique
+  name         String
+  email        String?
+  passwordHash String
+  active       Boolean      @default(true)
+  permissions  Permission[] @default([])
+  lastActiveAt DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  unlocks                Unlock[]               @relation("UnlockStudent")
+  grantedUnlocks         Unlock[]               @relation("UnlockGrantedBy")
+  lessonProgress         LessonProgress[]
+  vocabularyProgress     VocabularyProgress[]
+  testAttempts           TestAttempt[]
+  pronunciationAttempts  PronunciationAttempt[]
+  auditLogs              AuditLog[]
+
+  @@index([role])
+}
+
+model Level {
+  id             String    @id @default(cuid())
+  code           String    @unique
+  name           String
+  description    String?
+  order          Int       @default(0)
+  wordsPerLesson Int       @default(15)
+  published      Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  chapters       Chapter[]
+  unlocks        Unlock[]
+}
+
+model Chapter {
+  id          String    @id @default(cuid())
+  levelId     String
+  level       Level     @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lessons     Lesson[]
+  tests       Test[]
+  unlocks     Unlock[]
+
+  @@index([levelId, order])
+}
+
+model Lesson {
+  id         String           @id @default(cuid())
+  chapterId  String
+  chapter    Chapter          @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  dayNumber  Int
+  title      String
+  order      Int              @default(0)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  vocabulary Vocabulary[]
+  tests      Test[]
+  unlocks    Unlock[]
+  progress   LessonProgress[]
+
+  @@unique([chapterId, dayNumber])
+  @@index([chapterId, order])
+}
+
+model Vocabulary {
+  id           String   @id @default(cuid())
+  lessonId     String
+  lesson       Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  german       String
+  english      String
+  article      Article?
+  plural       String?
+  partOfSpeech String?
+  /// International Phonetic Alphabet, e.g. "ˈhʊnt"
+  ipa          String?
+  /// Learner-friendly phonetic spelling, e.g. "HOONT"
+  phonetic     String?
+  audioUrl     String?
+  difficulty   Int      @default(1)
+  tags         String[] @default([])
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sentences             ExampleSentence[]
+  progress              VocabularyProgress[]
+  answers               TestAnswer[]
+  pronunciationAttempts PronunciationAttempt[]
+
+  @@index([lessonId, order])
+}
+
+model ExampleSentence {
+  id           String     @id @default(cuid())
+  vocabularyId String
+  vocabulary   Vocabulary @relation(fields: [vocabularyId], references: [id], onDelete: Cascade)
+  german       String
+  english      String
+  audioUrl     String?
+  order        Int        @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([vocabularyId])
+}
+
+model Test {
+  id            String         @id @default(cuid())
+  kind          TestKind
+  title         String
+  lessonId      String?
+  lesson        Lesson?        @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  chapterId     String?
+  chapter       Chapter?       @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  questionCount Int            @default(10)
+  passingScore  Int            @default(70)
+  /// Seconds; null = no limit
+  timeLimitSec  Int?
+  questionTypes QuestionType[] @default([DE_TO_EN, EN_TO_DE, ARTICLE, SPELLING])
+  randomize     Boolean        @default(true)
+  published     Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  attempts      TestAttempt[]
+
+  @@index([lessonId])
+  @@index([chapterId])
+}
+
+model TestAttempt {
+  id             String       @id @default(cuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  testId         String
+  test           Test         @relation(fields: [testId], references: [id], onDelete: Cascade)
+  attemptNumber  Int
+  startedAt      DateTime     @default(now())
+  completedAt    DateTime?
+  durationSec    Int?
+  score          Int?
+  total          Int
+  percentage     Float?
+  correctCount   Int?
+  incorrectCount Int?
+  passed         Boolean?
+  answers        TestAnswer[]
+
+  @@unique([userId, testId, attemptNumber])
+  @@index([userId, completedAt])
+  @@index([completedAt])
+}
+
+model TestAnswer {
+  id                     String                @id @default(cuid())
+  attemptId              String
+  attempt                TestAttempt           @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  position               Int
+  vocabularyId           String
+  vocabulary             Vocabulary            @relation(fields: [vocabularyId], references: [id], onDelete: Cascade)
+  questionType           QuestionType
+  prompt                 String
+  /// Extra data shown to the student (e.g. sentence with gap, audio text)
+  promptData             Json?
+  options                String[]              @default([])
+  correctAnswer          String
+  givenAnswer            String?
+  /// null = not gradable (pronunciation without a scoring provider) or not yet answered
+  isCorrect              Boolean?
+  pronunciationAttemptId String?               @unique
+  pronunciationAttempt   PronunciationAttempt? @relation(fields: [pronunciationAttemptId], references: [id], onDelete: SetNull)
+
+  @@unique([attemptId, position])
+  @@index([vocabularyId])
+}
+
+model Unlock {
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation("UnlockStudent", fields: [userId], references: [id], onDelete: Cascade)
+  scope       UnlockScope
+  levelId     String?
+  level       Level?       @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  chapterId   String?
+  chapter     Chapter?     @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  lessonId    String?
+  lesson      Lesson?      @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  source      UnlockSource @default(MANUAL)
+  grantedById String?
+  grantedBy   User?        @relation("UnlockGrantedBy", fields: [grantedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime     @default(now())
+
+  @@unique([userId, levelId])
+  @@unique([userId, chapterId])
+  @@unique([userId, lessonId])
+  @@index([userId])
+}
+
+model LessonProgress {
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId    String
+  lesson      Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  status      LessonStatus @default(NOT_STARTED)
+  seenVocabularyIds String[] @default([])
+  startedAt   DateTime     @default(now())
+  completedAt DateTime?
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([userId, lessonId])
+  @@index([completedAt])
+}
+
+model VocabularyProgress {
+  id             String     @id @default(cuid())
+  userId         String
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vocabularyId   String
+  vocabulary     Vocabulary @relation(fields: [vocabularyId], references: [id], onDelete: Cascade)
+  timesSeen      Int        @default(0)
+  timesCorrect   Int        @default(0)
+  timesIncorrect Int        @default(0)
+  lastReviewedAt DateTime?
+  nextReviewAt   DateTime?
+  /// 0..1
+  mastery        Float      @default(0)
+  difficult      Boolean    @default(false)
+  // Spaced-repetition state (SM-2 compatible)
+  easeFactor     Float      @default(2.5)
+  intervalDays   Float      @default(0)
+  repetitions    Int        @default(0)
+  lastIncorrectAt DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@unique([userId, vocabularyId])
+  @@index([userId, nextReviewAt])
+}
+
+model PronunciationAttempt {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vocabularyId String
+  vocabulary   Vocabulary  @relation(fields: [vocabularyId], references: [id], onDelete: Cascade)
+  audioUrl     String?
+  transcript   String?
+  /// Whether the transcript matched the expected text (text comparison, not a pronunciation score)
+  transcriptMatches Boolean?
+  engine       String
+  /// Only set when a real scoring provider returns one. Never fabricated.
+  score        Float?
+  feedback     Json?
+  createdAt    DateTime    @default(now())
+  testAnswer   TestAnswer?
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+model AppSettings {
+  id                     Int      @id @default(1)
+  autoUnlockNextLesson   Boolean  @default(false)
+  autoUnlockNextChapter  Boolean  @default(false)
+  defaultWordsPerLesson  Int      @default(15)
+  defaultDailyPassScore  Int      @default(70)
+  defaultWeeklyPassScore Int      @default(75)
+  updatedAt              DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action    String
+  target    String?
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
