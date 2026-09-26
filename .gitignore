@@ -1,0 +1,13 @@
+node_modules
+.next
+out
+# Environment files hold secrets: never commit any except the example.
+.env*
+!.env.example
+*.tsbuildinfo
+next-env.d.ts
+/public/uploads
+/test-results
+/playwright-report
+.vercel
+.data
