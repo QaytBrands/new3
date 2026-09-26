@@ -14,13 +14,13 @@ export async function POST(req: Request) {
   }
   const audio = form.get("audio");
   try {
-    const { id, result } = await recordPronunciationAttempt({
+    const { id, result, audioSaved } = await recordPronunciationAttempt({
       userId: user.id,
       vocabularyId: String(form.get("vocabularyId") ?? ""),
       audio: audio instanceof Blob ? audio : null,
       clientTranscript: String(form.get("transcript") ?? "").slice(0, 300) || null,
     });
-    return NextResponse.json({ id, result });
+    return NextResponse.json({ id, result, audioSaved });
   } catch (e) {
     if (e instanceof RecordingError) return NextResponse.json({ error: e.message }, { status: e.status });
     throw e;

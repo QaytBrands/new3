@@ -11,7 +11,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const attempt = await prisma.pronunciationAttempt.findUnique({ where: { id }, select: { userId: true, audioKey: true } });
   // Same 404 for "missing" and "not yours" so ids can't be probed.
   if (!attempt || !attempt.audioKey || !canAccessRecording(user, attempt)) return new Response("Not found", { status: 404 });
-  const file = await getStorage().get(attempt.audioKey);
+  const file = await getStorage()?.get(attempt.audioKey);
   if (!file) return new Response("Not found", { status: 404 });
   return new Response(file.body, {
     headers: { "Content-Type": file.contentType, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" },

@@ -2,6 +2,35 @@
 
 Students learn German vocabulary level by level (A1, A2, …), chapter by chapter and day by day, with sentence practice, pronunciation practice, daily and weekly tests, and progress tracking. Admins and permission-scoped staff manage the curriculum and control what each student can access.
 
+## Deploy in 6 steps (Vercel + Neon)
+
+You need a Neon project with **Auth** enabled, and a Vercel account.
+
+1. **Create the app's account manager in Neon.** Go to Neon Console → your project → **Auth** → **Users** → **Add user**. Use an email such as `admin-bot@yourdomain.com` and a long password, then set the user's **role to admin**. The app uses this account only to create and manage logins.
+2. **Merge the code.** On GitHub, merge the pull request into `main`.
+3. **Import into Vercel.** Go to **Add New → Project**, pick this repository, and before clicking Deploy, add these **Environment Variables**:
+
+   | Name | Value |
+   | --- | --- |
+   | `DATABASE_URL` | Neon connection string (the **pooled** one, host contains `-pooler`) |
+   | `DIRECT_URL` | The same string with `-pooler` removed from the host |
+   | `NEON_AUTH_BASE_URL` | Neon Console → Auth → your Auth URL (ends in `/neondb/auth`) |
+   | `NEON_AUTH_COOKIE_SECRET` | Any random text of 32+ characters (`openssl rand -base64 32`) |
+   | `AUTH_PROVISIONER_EMAIL` | The account manager's email from step 1 |
+   | `AUTH_PROVISIONER_PASSWORD` | The account manager's password from step 1 |
+
+   Click **Deploy**. The database tables are created automatically during the build.
+4. **Trust your site in Neon Auth.** Neon Console → **Auth** → **Settings/Domains**: add your Vercel address, for example `https://your-project.vercel.app`.
+5. **Create your admin login.** Open `https://your-project.vercel.app/setup`.
+   - Enter the account manager's password as the **setup key**.
+   - Choose your own admin email and password.
+   - Leave "Load the sample A1 course" ticked if you want sample content.
+
+   This page stops working once an admin exists.
+6. **Sign in** at `/admin/login` with username `admin` (or your email). Then create staff and students.
+
+That's it. Student voice recordings are **not stored** in this setup: students can still record, replay and see what was heard. To store recordings later, see [Vercel Blob](#vercel-blob-student-recordings).
+
 ## Stack
 
 - **Next.js 16** (App Router, Server Components, Server Actions, `proxy.ts`), TypeScript, Tailwind CSS v4
@@ -48,9 +77,9 @@ All variables are listed in `.env.example`. Never commit a real `.env`; `.env` i
 | `NEON_AUTH_COOKIE_SECRET` | Signs the cached `session_data` cookie; ≥32 characters (`openssl rand -base64 32`). *Defined by Neon Auth.* | Yes | **Secret** | Production, Preview (different values) |
 | `AUTH_PROVISIONER_EMAIL` | Neon Auth service account with the Neon Auth **admin** role. Used server-side to create accounts, set passwords and ban/unban. *App-defined.* | Yes | Not secret (server-only) | Production, Preview |
 | `AUTH_PROVISIONER_PASSWORD` | Password of that service account. *App-defined.* | Yes | **Secret** | Production, Preview |
-| `APP_ORIGIN` | Public origin of the app, e.g. `https://wortweg.example.org`. Sent as `Origin` on server-to-Neon-Auth calls; must be a Neon Auth **trusted domain**. Falls back to `https://$VERCEL_PROJECT_PRODUCTION_URL`. *App-defined.* | Recommended | Public | Production, Preview |
-| `STORAGE_PROVIDER` | `vercel-blob` in production, `local` in development. | Yes | Public | Production, Preview |
-| `BLOB_READ_WRITE_TOKEN` | Vercel Blob token. Injected automatically when the Blob store is connected to the project. | With `vercel-blob` | **Secret** | Production, Preview (automatic) |
+| `APP_ORIGIN` | Public origin of the app. Sent as `Origin` on server-to-Neon-Auth calls; must be a Neon Auth **trusted domain**. On Vercel it defaults to `https://$VERCEL_PROJECT_PRODUCTION_URL`, so you only need it for a custom domain. *App-defined.* | No | Public | Production, Preview |
+| `STORAGE_PROVIDER` | Unset = recordings are not stored (default). `vercel-blob` to store them, `local` in development. | No | Public | Production, Preview |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob token. Injected automatically when a Blob store is connected to the project. | Only with `vercel-blob` | **Secret** | Production, Preview (automatic) |
 | `PRONUNCIATION_ENGINE` | `browser-transcript` (default) or `none`. | No | Public | Any |
 | `SEED_ADMIN_EMAIL` | First admin's sign-in email. | Seed only | Not secret | **Not stored in Vercel.** Set in the shell running the seed. |
 | `SEED_ADMIN_PASSWORD` | First admin's initial password, used once by `npm run db:seed`. | Seed only | **Secret** | **Not stored in Vercel.** Change the password after first sign-in. |
@@ -63,8 +92,10 @@ Removed in this release: `AUTH_SECRET` and `AUTH_TRUST_HOST` (Auth.js). Delete t
 
 ### Vercel Blob (student recordings)
 
+Optional. By default recordings aren't stored. To store them:
+
 1. In Vercel, go to **Storage → Create → Blob** and create the store with **private** access. Connect it to the project for the Production (and Preview) environments. This injects `BLOB_READ_WRITE_TOKEN`.
-2. Set `STORAGE_PROVIDER=vercel-blob`.
+2. Set `STORAGE_PROVIDER=vercel-blob` and redeploy.
 
 Recordings are uploaded with `access: "private"` and are never exposed by URL. The database stores only the blob pathname (`PronunciationAttempt.audioKey`). Audio is streamed through `/api/recordings/[id]/audio`, which checks that the viewer is the student who recorded it, an admin, or staff with `VIEW_PROGRESS`.
 
@@ -131,10 +162,10 @@ Do these in order. Nothing is deployed automatically.
 
 **3. Vercel**
 1. Import the GitHub repository. Framework: Next.js. The build command comes from `package.json` (`vercel-build`: Prisma generate → `prisma migrate deploy` → `next build`).
-2. Under **Settings → Environment Variables**, add for **Production**: `DATABASE_URL`, `DIRECT_URL`, `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`, `AUTH_PROVISIONER_EMAIL`, `AUTH_PROVISIONER_PASSWORD`, `APP_ORIGIN`, `STORAGE_PROVIDER=vercel-blob`.
+2. Under **Settings → Environment Variables**, add for **Production**: `DATABASE_URL`, `DIRECT_URL`, `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`, `AUTH_PROVISIONER_EMAIL`, `AUTH_PROVISIONER_PASSWORD`. Add `APP_ORIGIN` only for a custom domain.
 3. For **Preview**, use the preview branch's values, or leave them unset to disable previews. Do **not** add `SEED_*`, `AUTH_SECRET` or `AUTH_TRUST_HOST`.
 
-**4. Vercel Blob**
+**4. Vercel Blob (optional)**
 1. Go to **Storage → Create → Blob** and create the store with **Private** access.
 2. **Connect** it to the project for Production (and Preview). `BLOB_READ_WRITE_TOKEN` is injected automatically; never expose it or prefix it with `NEXT_PUBLIC_`.
 
@@ -144,7 +175,9 @@ Do these in order. Nothing is deployed automatically.
 - Order: `…_init` → `…_timezones_native_audio_private_recordings` → `…_audit_log_login_throttle_index` → `…_neon_auth_identity`. All are additive or renames; none drop data.
 
 **6. Initial admin**
-From a trusted machine, once, run:
+Easiest: open `https://your-domain/setup`, enter `AUTH_PROVISIONER_PASSWORD` as the setup key, and choose the admin's email and password (optionally loading the sample course). The page only works while no admin exists; wrong keys are throttled.
+
+Alternatively, from a trusted machine, once, run:
 ```bash
 DATABASE_URL=… DIRECT_URL=… NEON_AUTH_BASE_URL=… NEON_AUTH_COOKIE_SECRET=… \
 AUTH_PROVISIONER_EMAIL=… AUTH_PROVISIONER_PASSWORD=… APP_ORIGIN=https://your-domain \

@@ -155,6 +155,25 @@ describe("student isolation", () => {
   });
 });
 
+describe("recordings with storage turned off (production default)", () => {
+  it("keeps the transcript, uploads nothing, and there is no audio to fetch", async () => {
+    const saved = process.env.STORAGE_PROVIDER;
+    delete process.env.STORAGE_PROVIDER;
+    try {
+      const audio = new Blob([new Uint8Array([1, 2, 3])], { type: "audio/webm" });
+      const rec = await recordPronunciationAttempt({ userId: studentB.id, vocabularyId: ids.v2, audio, clientTranscript: "Zwei" });
+      expect(rec.audioSaved).toBe(false);
+      expect(rec.result.transcription).toBe("Zwei");
+      const row = await prisma.pronunciationAttempt.findUniqueOrThrow({ where: { id: rec.id } });
+      expect(row.audioKey).toBeNull();
+      signInAs(studentB);
+      expect((await getRecordingAudio(new Request("http://x"), { params: Promise.resolve({ id: rec.id }) })).status).toBe(404);
+    } finally {
+      process.env.STORAGE_PROVIDER = saved;
+    }
+  });
+});
+
 describe("staff permission boundaries", () => {
   const denied = { error: "You do not have permission to do this." };
 

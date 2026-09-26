@@ -60,8 +60,20 @@ function contentTypeFor(key: string) {
   return key.endsWith(".m4a") ? "audio/mp4" : key.endsWith(".ogg") ? "audio/ogg" : "audio/webm";
 }
 
-export function getStorage(): StorageProvider {
-  return process.env.STORAGE_PROVIDER === "vercel-blob" ? new VercelBlobStorageProvider() : new LocalStorageProvider();
+export type StorageMode = "none" | "local" | "vercel-blob";
+
+/** Recording storage is off unless STORAGE_PROVIDER is set to "local" (dev) or "vercel-blob". */
+export function storageMode(env: Record<string, string | undefined> = process.env): StorageMode {
+  const v = env.STORAGE_PROVIDER?.trim();
+  return v === "local" || v === "vercel-blob" ? v : "none";
+}
+
+/** Null when recording storage is turned off. */
+export function getStorage(): StorageProvider | null {
+  const mode = storageMode();
+  if (mode === "vercel-blob") return new VercelBlobStorageProvider();
+  if (mode === "local") return new LocalStorageProvider();
+  return null;
 }
 
 export function recordingKey(userId: string, ext: string) {

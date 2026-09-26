@@ -38,6 +38,13 @@ test.describe.serial("Neon Auth sign-in, portals and sessions", () => {
     await expect(page.getByText(`Staff account ${staff.username} created.`)).toBeVisible();
   });
 
+  test("/setup is closed once an admin exists", async ({ browser }) => {
+    const page = await newPage(browser);
+    await page.goto("/setup");
+    await expect(page.getByText("Setup is already complete.")).toBeVisible();
+    await expect(page.getByLabel("Setup key")).toHaveCount(0);
+  });
+
   test("1. student login → student dashboard with a secure, HttpOnly Neon Auth session cookie", async ({ browser }) => {
     const page = await newPage(browser);
     await login(page, "/login", student.username, student.password);

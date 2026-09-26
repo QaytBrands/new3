@@ -51,6 +51,7 @@ export function Recorder({
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [result, setResult] = useState<EngineResult | null>(null);
   const [supportsStt, setSupportsStt] = useState(true);
+  const [audioSaved, setAudioSaved] = useState(true);
   const recorder = useRef<MediaRecorder | null>(null);
   const recognition = useRef<SpeechRecognitionLike | null>(null);
   const transcript = useRef<string | null>(null);
@@ -130,8 +131,9 @@ export function Recorder({
     try {
       const res = await fetch("/api/recordings", { method: "POST", body: fd });
       if (!res.ok) throw new Error(await res.text());
-      const json = (await res.json()) as { id: string; result: EngineResult };
+      const json = (await res.json()) as { id: string; result: EngineResult; audioSaved?: boolean };
       setResult(json.result);
+      setAudioSaved(json.audioSaved !== false);
       setState("saved");
       onSaved?.(json.id, json.result);
     } catch {
@@ -178,13 +180,14 @@ export function Recorder({
               )}
             </p>
           ) : (
-            <p className="text-slate-500">Recording saved. No transcript was available.</p>
+            <p className="text-slate-500">{audioSaved ? "Recording saved." : "Attempt noted."} No transcript was available.</p>
           )}
           {result.capabilities.scoring && result.overallScore !== null ? (
             <p className="mt-1">Pronunciation score: <strong>{Math.round(result.overallScore)}</strong>/100</p>
           ) : (
             <p className="mt-1 text-xs text-slate-400">Pronunciation scoring isn’t available yet — compare your recording with the reference audio.</p>
           )}
+          {!audioSaved && <p className="mt-1 text-xs text-slate-400">Your recording isn’t stored on the server — you can replay it here until you leave the page.</p>}
           {result.issues.length > 0 && (
             <ul className="mt-1 list-disc pl-5 text-xs text-slate-600">
               {result.issues.map((i, n) => <li key={n}>{i.message}</li>)}

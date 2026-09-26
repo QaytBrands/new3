@@ -22,7 +22,7 @@ export async function recordPronunciationAttempt(input: {
   vocabularyId: string;
   audio: Blob | null;
   clientTranscript: string | null;
-}): Promise<{ id: string; result: PronunciationResult }> {
+}): Promise<{ id: string; result: PronunciationResult; audioSaved: boolean }> {
   const vocab = await assertVocabularyAccess(input.userId, input.vocabularyId);
   if (!vocab) throw new RecordingError("Not found", 404);
 
@@ -34,10 +34,13 @@ export async function recordPronunciationAttempt(input: {
     if (!contentType.startsWith("audio/")) throw new RecordingError("Invalid audio", 400);
     const ext = contentType.includes("mp4") ? "m4a" : contentType.includes("ogg") ? "ogg" : "webm";
     audioBytes = { data: new Uint8Array(await input.audio.arrayBuffer()), contentType };
-    try {
-      audioKey = (await getStorage().put(recordingKey(input.userId, ext), input.audio, contentType)).key;
-    } catch (e) {
-      console.error("Recording upload failed", e);
+    const storage = getStorage(); // null when recording storage is turned off
+    if (storage) {
+      try {
+        audioKey = (await storage.put(recordingKey(input.userId, ext), input.audio, contentType)).key;
+      } catch (e) {
+        console.error("Recording upload failed", e);
+      }
     }
   }
 
@@ -60,7 +63,7 @@ export async function recordPronunciationAttempt(input: {
       feedback: result.phonemes.length || result.issues.length ? { phonemes: result.phonemes, issues: result.issues } : undefined,
     },
   });
-  return { id: attempt.id, result };
+  return { id: attempt.id, result, audioSaved: audioKey !== null };
 }
 
 export function recordingAudioPath(attemptId: string) {
